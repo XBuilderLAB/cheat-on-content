@@ -244,26 +244,50 @@ prompt:
 
 ### Phase 5: 落地 + cleanup pass
 
-通过审核后，**REQUIRE_CONFIRM=true** → 询问用户："新公式 PASS 本地与外部审核。最后确认：执行 bump 落地？这会修改 rubric_notes.md 并删除若干已被吸收的观察。回答 'yes, bump' 才执行。"
+通过审核后，**REQUIRE_CONFIRM=true** → 询问用户："新公式 PASS 本地与外部审核。最后确认：执行 bump 落地？这会修改 rubric_notes.md + rubric-memo.md 并删除若干已被吸收的观察。回答 'yes, bump' 才执行。"
 
 用户确认后：
 
-1. 在 `rubric_notes.md` 顶部更新 `**当前版本**: vN+1`
-2. 在版本速查表加一行
-3. 在文件 Memo 段写完整 v.N → v.N+1 升级 Memo（按 [bump-validation-protocol.md](../../shared-references/bump-validation-protocol.md) Step 5 模板）：
-   - 触发观察
-   - 证据数据（校准池重打表 + 排序对照）
-   - 诊断
-   - 新公式
-   - 跨模型审核结论引用
-   - 已知局限
-4. 更新"当前评分维度"段（删 NA / AB，加 MS / TS）
-5. **执行 cleanup pass**（按 [observation-lifecycle.md](../../shared-references/observation-lifecycle.md) 的"cleanup pass 强制时机"）：
-   - 已被吸收为新维度的观察 → 删（如观察 E 被吸收为 MS → 删观察 E）
-   - 被新数据推翻的观察 → 删
-   - 仍未解决的观察 → 迁移到新版本"待验证假设"段
-   - 已被验证的"规律"→ 移到"规律沉淀区"
-6. 重新读 `rubric_notes.md` 全文，确保读者能在 60 秒内理解当下规则——超出 600 行触发额外清算
+#### 5a. 更新 `rubric_notes.md`（**只放通用语言，不含视频名 / 实绩**）
+
+- 顶部 metadata 更新：
+  - `**当前版本**: vN+1`
+  - `**Last bumped at**: <ISO 8601>`
+  - `**Upgrade memos**: 见 [rubric-memo.md](rubric-memo.md)`（指针，不复制 Memo 内容）
+- 版本速查表加一行（只含版本号 + 公式签名，**不含**证据样本）
+- 更新"当前评分维度"段（删 NA / AB，加 MS / TS）
+- **派生证据段** 如新维度需要锚点解释 → **用通用语言**：
+  - ✅ 允许：「派生证据：高抽象密度样本 → CC=1 → 低 reach」
+  - ❌ 禁止：「派生证据：「停止期待」CC=1 → 实绩 13.7w」（视频名 + 实绩 数字）
+  - 命中违禁 pattern → 把该段抽到 rubric-memo.md 的"派生证据"子段，原位用通用语言替代
+
+#### 5b. 写 Memo 到 `rubric-memo.md`（**append 模式，不覆盖历史**）
+
+按 [bump-validation-protocol.md](../../shared-references/bump-validation-protocol.md) Step 5 + [templates/rubric-memo.template.md](../../templates/rubric-memo.template.md) 格式 append 一段 Memo 到文件末尾：
+
+- 触发观察（含真实观察 ID）
+- 证据数据（**校准池重打表 + 排序对照，含真实视频名 + 实绩**）
+- 派生证据（**含真实样本名 + 实绩**）
+- 诊断
+- 新公式
+- 跨模型审核结论引用（含模型名 + 判定 + 理由摘录）
+- 已知局限
+
+**绝不**覆盖 rubric-memo.md 已有内容——bump memo 按时间顺序累积。
+
+#### 5c. cleanup pass（按 [observation-lifecycle.md](../../shared-references/observation-lifecycle.md) 的"cleanup pass 强制时机"）
+
+在 `rubric_notes.md` 内执行（**不**动 rubric-memo.md）：
+
+- 已被吸收为新维度的观察 → 删（如观察 E 被吸收为 MS → 删观察 E）
+- 被新数据推翻的观察 → 删
+- 仍未解决的观察 → 迁移到新版本"待验证假设"段
+- 已被验证的"规律"→ 移到"规律沉淀区"
+
+#### 5d. 整理 + 自检
+
+- 重新读 `rubric_notes.md` 全文，确保读者能在 60 秒内理解当下规则——超出 600 行触发额外清算
+- **自检 leak guard**：对 `rubric_notes.md` 跑 `grep -E '\\d+\\s*[wWmMkK万]|播放|实绩|实际'` → 如有命中 → **abort bump + 回滚**，提示用户"rubric_notes.md 写入了违禁内容（实绩 / 播放数）"。这些内容应在 rubric-memo.md，不在 rubric_notes.md
 
 ### Phase 6: 校准样本批量更新
 
@@ -273,7 +297,7 @@ prompt:
 
 ---
 **Re-scored under v2.1 on 2026-05-04**: composite=8.24 → 9.11 (blind: true)
-（rubric bump 时全量重算，由 cheat-score-blind sub-agent 独立打分；详见 rubric_notes.md 的 v2 → v2.1 升级 Memo）
+（rubric bump 时全量重算，由 cheat-score-blind sub-agent 独立打分；详见 rubric-memo.md 的 v2 → v2.1 升级 Memo）
 ```
 
 `blind: true` 字段**必填**——告诉未来读这条记录的人"这是 channel B 隔离打分，不是主 Claude 自评"。如果某条 prediction 在 Phase 2 因 sub-agent 失败被排除 → 不会有 Re-scored 行（保持原样）。
@@ -438,10 +462,16 @@ baseline: 4.2w 中位数（基于 5 篇校准样本）
 - 「保留所有旧观察作为历史」 → 违反原则 #3
 - 「先 bump，cleanup 下次再做」 → 拒绝。cleanup 是 bump 的一部分
 - 「只重算 composite 不重打 dim」 → 拒绝。新权重 × 旧 dim 仍是旧污染。每个 dim 都由 sub-agent 重审 script
+- 「把 Memo 全文写进 rubric_notes.md 顶部，方便我读」 → 拒绝。rubric_notes.md 是 blind sub-agent 白名单——含视频名 / 实绩 → 通过白名单泄漏。Memo 写 rubric-memo.md（白名单**外**），rubric_notes.md 只放公式 + 通用语言维度定义 + 指针
+- 「派生证据段保留真实视频名，让 rubric 读起来更具体」 → 拒绝。在 rubric_notes.md 必须用通用语言（"高抽象密度样本"）；带视频名的派生证据写 rubric-memo.md
 
 ## Integration
 
 - 上游：`/cheat-retro` 检测到 ≥3 同向偏差 → 提议跑 `/cheat-bump`
-- 依赖：`mcp__llm-chat__chat`（如配置）
-- 修改：`rubric_notes.md`（结构性）+ 所有 `predictions/*.md`（追加 Re-scored 行，不动预测段）+ `.cheat-state.json`
+- 依赖：`mcp__llm-chat__chat`（如配置）+ Task tool（spawn cheat-score-blind）
+- 修改：
+  - `rubric_notes.md`（结构性更新，**绝不**写真实视频名 / 实绩）
+  - `rubric-memo.md`（**新**——append Memo 全文，含证据 + 派生证据）
+  - 所有 `predictions/*.md`（追加 Re-scored 行，不动预测段）
+  - `.cheat-state.json`
 - 下游：下一篇 `/cheat-predict` 自动按新 rubric_version 打分

@@ -56,7 +56,7 @@ last_self_scored_at=$(echo "$state" | jq -r '.last_self_scored_at // ""')
 # --- Detect schema mismatch (read LATEST_SCHEMA from migrations/registry.md if reachable) ---
 # Strategy: hardcode current LATEST_SCHEMA here (bumped by maintainer alongside cheat-init).
 # If state.schema_version != LATEST_SCHEMA → suggest migrate (non-blocking).
-LATEST_SCHEMA="1.3"
+LATEST_SCHEMA="1.4"
 schema_mismatch=""
 if [[ "$schema_version" != "$LATEST_SCHEMA" && "$schema_version" != "unknown" ]]; then
   schema_mismatch="⚠️  schema 版本不一致：state=${schema_version}, skill 期望=${LATEST_SCHEMA}。建议跑 /cheat-migrate（非阻塞，部分新功能可能在迁移前异常）。"

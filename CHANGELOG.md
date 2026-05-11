@@ -8,6 +8,25 @@ All notable changes to cheat-on-content will be documented here.
 
 ## [Unreleased]
 
+### Fixed — `rubric_notes.md` 实绩泄漏漏洞（**BREAKING for blind channel integrity**）
+
+**问题**：PR #11 引入的 cheat-score-blind sub-agent 承诺只读 `scripts/<id>.md` + `rubric_notes.md` 两个文件。但 cheat-bump Phase 5 把升级 Memo（含真实视频名 + 实绩 + 派生证据）写进了 `rubric_notes.md`——sub-agent 通过白名单读到了本不该看的实绩，盲打分变成"看过实绩的事后合理化"。实测复现：5 条已发视频里 2 条 sub-agent 自动标 `any_contamination_signal: true`（refusal=`non_blind_warning`，所有维度 confidence 降 medium）。
+
+**修复**（拆 file）：
+- **新增 `rubric-memo.md`**——升级 Memo 累积档案。cheat-bump Phase 5 写**这里**，**不**写 rubric_notes.md。append 模式累积多次 bump
+- **`rubric_notes.md` 严格收窄**——只放公式 + 通用语言维度定义 + bucket 边界 + 顶部 metadata 指向 rubric-memo.md。**绝不**含真实视频名 / 实绩 / 派生证据带命名锚
+- **`cheat-score-blind` 硬禁读 `rubric-memo.md`**——refusal_code `blocked_rubric_memo`；同时加白名单文件**兜底自检**（grep 命中实绩 pattern → 标 `non_blind_warning`）
+- **`cheat-bump` Phase 5 leak guard**——写完 rubric_notes.md 后 grep 自检，命中违禁 pattern → abort + 回滚
+- **`shared-references/observation-lifecycle.md` 加约束**——任何 skill 写 rubric_notes.md 都不许含实绩 pattern（防止将来再犯）
+
+**老用户必跑**：v0.x 任何已有 `rubric_notes.md` 含 bump Memo 的项目，git pull 后**必须**跑 `/cheat-migrate` 把 rubric_notes.md 拆分为两份文件。不跑 → blind sub-agent 仍泄漏。详见 [migrations/1.3-to-1.4.md](migrations/1.3-to-1.4.md)。
+
+### Changed — schema 1.3 → 1.4（MINOR but BREAKING for blind channel）
+
+- state 字段**无变化**——`schema_version` bump 仅标识"老用户须跑文件层拆分迁移"
+- [migrations/1.3-to-1.4.md](migrations/1.3-to-1.4.md) 7 步标准流程（备份 → 扫描 → 抽离 → 写 rubric-memo.md → 清理 rubric_notes.md → 自检 → bump schema）
+- cheat-init, SessionStart hook LATEST_SCHEMA, registry.md 三处同步
+
 ### Added — Blind scoring sub-agent（channel B 隔离）
 
 **问题**：cheat-on-content 的 7/9 维打分原本在主对话 inline 完成——但主 Claude 已经看过用户对话、实绩数据、复盘段历史，打分被污染。`/cheat-bump` Phase 2 校准池重打分时尤其严重——rank 一致性可能 overfit 而非真信号。
