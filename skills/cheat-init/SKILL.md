@@ -270,7 +270,7 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
    写入（**所有 `<...>` 占位必须查上面 Q 的映射表换成具体 enum 值，绝不直接存字母**）：
    ```json
    {
-     "schema_version": "1.3",
+     "schema_version": "1.4",
      "skill_version": "1.0.0",
      "rubric_version": "v0",
      "content_form": "<查 Q1 映射表，写 enum 字符串如 \"opinion-video\">",
@@ -312,9 +312,26 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
     
     为什么叫 v0：v0 是没校准前的占位。你的账号自己的真权重要从你
     的数据反推，不是预设。跑完 5 篇有数据的内容后，会自动提议
-    升级到「校准 v1」（你的第一个真正校准过的 rubric）。"
+    升级到「校准 v1」（你的第一个真正校准过的 rubric）。
+
+    ⚠️ rubric_notes.md 是 blind sub-agent (channel B) 的白名单文件——
+    只能含通用语言（公式 / 维度定义 / bucket 边界），不能含真实视频名 / 实绩。
+    每次 bump 升级时的 Memo（含证据数据 + 派生证据）写到 rubric-memo.md（下一步创建）。"
    ```
    - 复制 `cheat-on-content/starter-rubrics/<form>-zero.md`（cold-start）或 `<form>.md`（已有数据时仍可参考）
+
+2.5. **`rubric-memo.md`**（**新**——配合 cheat-score-blind 隔离协议）
+   ```
+   "正在创建 rubric-memo.md — bump 升级 Memo 累积档案。
+    这是 cheat-bump Phase 5 写入 Memo 全文（含真实视频名 + 实绩 + 派生证据）的位置。
+
+    为什么单独一个文件：blind sub-agent 的白名单是 rubric_notes.md，
+    历史上 bump Memo 写进 rubric_notes.md 会让 blind sub-agent 通过白名单
+    拿到本该看不到的实绩数据——本文件是隔离修复，sub-agent 硬禁读本文件。
+    
+    现在是空的，等第一次 cheat-bump 升级后 append 第一段 Memo。"
+   ```
+   - 复制 `cheat-on-content/templates/rubric-memo.template.md` → `<user-repo>/rubric-memo.md`
 
 3. **`script_patterns.md`**
    ```

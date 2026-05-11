@@ -18,7 +18,7 @@
 
 ```json
 {
-  "schema_version": "1.3",
+  "schema_version": "1.4",
   "skill_version": "1.0.0",
 
   "rubric_version": "v0",
@@ -61,6 +61,16 @@
   "initialized_at": "2026-05-04T15:00:00+08:00"
 }
 ```
+
+### 关键变更（v1.4）
+
+相比 v1.3（**MINOR but BREAKING for blind channel integrity**——老用户必须跑 migrate）：
+
+- **rubric 文件拆分**：`rubric_notes.md` → `rubric_notes.md`（公式 + 通用维度定义；blind 白名单）+ `rubric-memo.md`（升级 Memo 含证据 + 派生证据；blind 硬禁读）
+- **state 字段不变**——仅 `schema_version` bump 标识老用户须跑迁移把现有 rubric_notes.md 拆成两份文件
+- 配合 [skills/cheat-score-blind/SKILL.md](../skills/cheat-score-blind/SKILL.md) 的 `blocked_rubric_memo` refusal_code + cheat-bump Phase 5 leak guard 自检
+- **不跑 migrate 的后果**：blind sub-agent 仍会读到 rubric_notes.md 里的实绩，sub-agent 会自报 `non_blind_warning` 并降所有 confidence 到 medium——可用但不再是"真盲"
+- 详见 [migrations/1.3-to-1.4.md](../migrations/1.3-to-1.4.md)
 
 ### 关键变更（v1.3）
 

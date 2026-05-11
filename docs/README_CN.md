@@ -112,6 +112,8 @@ cd cheat-on-content
 bash install.sh
 ```
 
+> ⚠️ **从 v0.x 升级？** `git pull` 后在你的内容项目里跑 `/cheat-migrate`。**1.3 → 1.4 是 blind channel 完整性 BREAKING 修复**——拆分 `rubric_notes.md` 防止 blind sub-agent 通过白名单读到实绩。不跑迁移的话 blind 打分会持续标 `non_blind_warning`。详见 [CHANGELOG](../CHANGELOG.md) 和 [migrations/1.3-to-1.4.md](../migrations/1.3-to-1.4.md)。
+
 14 个子 skill 软链接到你 agent 的 skill 目录。装一次，所有内容项目都能用。
 
 **支持的 agent**：Claude Code（默认）· Codex（`bash install.sh --codex`）· 两个都装（`bash install.sh --all`）
