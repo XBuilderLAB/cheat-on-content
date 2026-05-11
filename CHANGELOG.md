@@ -8,6 +8,35 @@ All notable changes to cheat-on-content will be documented here.
 
 ## [Unreleased]
 
+### Added — Blind scoring sub-agent（channel B 隔离）
+
+**问题**：cheat-on-content 的 7/9 维打分原本在主对话 inline 完成——但主 Claude 已经看过用户对话、实绩数据、复盘段历史，打分被污染。`/cheat-bump` Phase 2 校准池重打分时尤其严重——rank 一致性可能 overfit 而非真信号。
+
+**改动**：引入 [skills/cheat-score-blind](skills/cheat-score-blind/SKILL.md) 作为 **channel B** 隔离打分 sub-agent。三 channel 模型：
+- **A** = 主对话：决策 / 写 retro / 跟用户交互
+- **B** = blind sub-agent (新)：只接收 `script_path` + `rubric_notes_path`，硬拒绝读 state file / predictions/ / videos/，输出严格 JSON 9 维分 + per-dim confidence
+- **C** = 跨模型 audit（qwen-max via `mcp__llm-chat__chat`，已有）：bump 终局 sanity check
+
+具体落地：
+- **`cheat-score` Step 3** 改为 Task tool delegate 到 cheat-score-blind（不再 inline 打分；cheat-score 无 `--skip-blind` 因为是轻量探索）
+- **`cheat-predict` Phase 2** 默认 delegate；新 **Phase 2.5** 做 disagreement detection——blind 与主 Claude 自估 |delta| ≥ 2 弹用户裁定（选 a/b/c）；header 新增 `BlindScored By` + `BlindScore Disagreement` 字段（**所有维度必记**，delta=0 也记，作为复盘分析素材）
+- **`cheat-predict --skip-blind`** flag 是 escape hatch：触发 `state.last_prediction_self_scored=true` + `last_self_scored_at` 时间戳，cheat-status / SessionStart hook 持续 nag 至下次正常调用清回
+- **`cheat-bump` Phase 2** **强制** sub-agent，**不接受任何 fallback**——Task tool 不可用 → abort bump，不接受"自审"；每条 prediction 的 `Re-scored under vN` 行额外标 `blind: true`
+- **SessionStart hook** 检测 `last_prediction_self_scored && days_since >= 7` 输出红色警告
+- **install.sh / uninstall.sh** 加 `cheat-score-blind` 到 SKILLS 数组（14 个子 skill）
+
+### Changed — schema 1.2 → 1.3（MINOR）
+
+- 新增 `last_prediction_self_scored: bool`（默认 false）+ `last_self_scored_at: ISO 8601 / null`
+- [migrations/1.2-to-1.3.md](migrations/1.2-to-1.3.md) 含 4 段标准格式（WHAT/WHY/HOW/Manual fallback）
+- 老 state 跑 `/cheat-migrate` 升级；不跑也兼容（skills 用 `state.get(field, default)` 兜底）
+
+### Known limitations（写进 cheat-score-blind/SKILL.md）
+
+1. **sub-agent ≠ 真独立** —— 同 Claude 模型，RLHF priors 共享；新 context 不等于另一个判分体系
+2. **不解决 rubric 设计 bias** —— 用户自己写的 rubric 自然让自己内容显得好。这层 bias 由 channel C 跨模型 audit 和定期 bump 验证解决
+3. **不解决 review 阶段的覆盖** —— 主 Claude 拿到 blind 分后，可能在 Phase 2.5 被实绩诱导覆盖。disagreement detection + 用户裁定减轻但不消除
+
 ### Changed — README / cheat-init voice 重塑（递归宿命感）
 
 - **README tagline 改递归宿命版**："你正在读这段话——这个 skill 预测过了。... 你停下来思考'这是不是真的'——也在它的预测里。" 替代原"凭感觉发是猜，这套让你算"框架

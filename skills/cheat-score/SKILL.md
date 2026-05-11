@@ -56,24 +56,50 @@ allowed-tools: Read, Glob, Grep
 
 如果 `rubric_notes.md` 格式与预期不符（用户手改过结构）→ 询问用户当前公式是哪一行，**不要自己猜**。
 
-### Step 3：**Claude 自己**逐维度打分
+### Step 3：**delegate 到 blind sub-agent**（不再 inline 打分）
 
-**Claude 主动打分**——不让用户来打。这是工具的核心价值（"作弊器"——AI 帮你判断，不是 AI 当你的格式化器）。
+主对话已经被用户对话 / 已发数据 / 历史 retro 段污染——inline 打分等于带着后视镜判分。
 
-对每个维度：
-1. 读维度定义 + 0-5 含义
-2. 在脑里 anchor 到 0/3/5 的样本对照
-3. 选择一个 **整数**（0/1/2/3/4/5——不允许 4.5 之类）
-4. 写一行理由（≤ 30 字，引用稿子里的具体词或场景）
+改成**通过 Task tool 调 `/cheat-score-blind` sub-agent**，主 Claude 只做调度 + review。详见 [skills/cheat-score-blind/SKILL.md](../cheat-score-blind/SKILL.md)。
 
-**打分速度纪律**（参考 starter-rubrics/opinion-video.md 的 cheat sheet）：
-- 每个维度 ≤ 30 秒思考时间。超过就是在合理化，不是在打分
-- **相信第一个整数**
-- **不查锚点**——先盲打，再对比锚点（避免被锚定）
+**Task prompt 模板**（**只能含**下面这些）：
 
-输出后用户可以挑刺（"AB 给 3 不是 4"），Claude 改值并重新展示。
+```
+Spawn cheat-score-blind sub-agent.
 
-### Step 4：算 composite + 输出
+Input:
+  script_path: <用户给的 draft path>
+  rubric_notes_path: rubric_notes.md
+
+Task: 按 rubric_notes 当前公式给上面 script 打分。返回严格 JSON（见 cheat-score-blind SKILL.md Phase 2 schema）。
+不要读 state file / predictions/ / videos/ 任何其他文件。
+不要询问用户 —— 你没有用户。
+```
+
+**禁止**塞进 Task prompt 的东西（[cheat-score-blind/SKILL.md](../cheat-score-blind/SKILL.md) 的"主 Claude 调用契约"段）：
+- 用户对话引用 / 摘录
+- 含播放数 / 万 / w / k 等字眼
+- "前一次预测是 X" / "实际播放是 Y" 等 hint
+- 任何 `predictions/*.md` 路径
+
+调用前 grep 自检：`echo "<prompt>" | grep -Ei '播放|阅读|点赞|评论数|实际|retro|复盘|实绩|w$|万$'` 命中 → 改 prompt 重发。
+
+### Step 4：解析 sub-agent 回传 JSON + review
+
+sub-agent 返回严格 JSON。主 Claude：
+
+1. 解析 dimensions 段（含 score + per-dim confidence + reason）
+2. 校验 `self_check.any_contamination_signal == false`，否则警告
+3. 按 rubric_notes 公式算 composite（公式逻辑在主，分数来自 sub-agent）
+4. **不修改 sub-agent 给的维度分**——score 只是显示。如果用户挑刺（"AB 给 3 不是 4"），主 Claude 记录到 `User Override` 但 sub-agent 原始分留档
+
+如果 sub-agent 返回 `refusal != null`：
+- `blocked_contaminated_input` → 报告 Task prompt 含违禁字段，让主 Claude 重发
+- `script_path_invalid` → 检查路径
+- `rubric_unparseable` → 提示用户 rubric_notes.md 损坏
+- `non_blind_warning` → 仍接受 dimensions（但 confidence 全 medium），警告
+
+### Step 5：算 composite + 输出
 
 按当前公式算综合分。控制台输出（OUTPUT_DETAIL=full）：
 
@@ -103,7 +129,7 @@ composite = (5×1.5 + 2×1.5 + 5×1.5 + 5 + 3 + 5 + 4) / 8.5 × 2.0 = **8.24**
 
 OUTPUT_DETAIL=compact 时仅输出分数表 + composite，不附理由列。
 
-### Step 5：**绝不**做的事
+### Step 6：**绝不**做的事
 
 - ❌ 写任何文件（包括 predictions/、rubric_notes.md、candidates.md）
 - ❌ 给 bucket 概率分布（那是 cheat-predict 的活）
@@ -112,17 +138,19 @@ OUTPUT_DETAIL=compact 时仅输出分数表 + composite，不附理由列。
 
 ## Key Rules
 
-1. **整数分**。不允许 4.5、3.7。如果犹豫 → 选低值 + 备注
-2. **盲打优先**。打分前不读 anchors（当前样本附近 composite 的旧作品的实绩），避免被实绩锚定
-3. **理由是诊断工具**。每个维度的 1-30 字理由不是装饰——复盘时用来找出哪个维度判断错了
-4. **不写文件**。这是 score 与 predict 的核心区别。score 是探索，predict 是承诺
-5. **不算 candidate composite**。candidates.md 里的 composite 字段在 cheat-trends/cheat-recommend 里写——score 只服务"已写好的具体稿子"
+1. **打分走 sub-agent**。主 Claude 不再 inline 打分。看 [cheat-score-blind/SKILL.md](../cheat-score-blind/SKILL.md) 的隔离协议
+2. **整数分**。不允许 4.5、3.7
+3. **盲打优先**。sub-agent 只看 script + rubric，天然盲——这是它存在的全部理由
+4. **理由是诊断工具**。每个维度的 1-30 字理由不是装饰——复盘时用来找出哪个维度判断错了
+5. **不写文件**。这是 score 与 predict 的核心区别。score 是探索，predict 是承诺
+6. **不算 candidate composite**。candidates.md 里的 composite 字段在 cheat-trends/cheat-recommend 里写——score 只服务"已写好的具体稿子"
 
 ## Refusals
 
 - 「打分顺便预测一下」 → 拒绝。请改用 `/cheat-predict`。原因：predict 必须走 blind check + 写 immutable 日志，score 跳过这些
 - 「打完分把分数写进 rubric_notes.md 的观察段」 → 拒绝。observation lifecycle 规定观察必须有"实绩 vs 预测"对比，光有打分不构成观察
 - 「能不能直接告诉我会不会爆」 → 拒绝。给具体 composite + bucket 的判定要求走 predict 流程；score 只输出当前 rubric 下的机械计算
+- 「跳过 blind sub-agent 让主 Claude 直接打」 → cheat-score **不接受**这种 escape hatch（与 cheat-predict 不同；cheat-predict 有 `--skip-blind`）。score 是轻量探索，没理由放弃隔离。如真的 Task tool 不可用 → 提示用户配置后再试
 
 ## Integration
 

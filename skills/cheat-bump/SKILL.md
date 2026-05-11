@@ -1,8 +1,8 @@
 ---
 name: cheat-bump
-description: 提议并执行 rubric 或 bucket 升级。两种模式：**完整 rubric bump**（最高风险动作，5 步强制 + 跨模型审核）和 **--bucket-only 轻量重校**（只换 bucket 边界，不动 rubric 公式）。触发词："升级 rubric"/"bump rubric"/"更新公式"/"我想加一个维度"/"调整权重"/"重校桶"/"recalibrate bucket"。
+description: 提议并执行 rubric 或 bucket 升级。两种模式：**完整 rubric bump**（最高风险动作，5 步强制 + 跨模型审核）和 **--bucket-only 轻量重校**（只换 bucket 边界，不动 rubric 公式）。**Phase 2 强制走 cheat-score-blind sub-agent 给校准池重打分**——不接受 self-scored fallback。触发词："升级 rubric"/"bump rubric"/"更新公式"/"我想加一个维度"/"调整权重"/"重校桶"/"recalibrate bucket"。
 argument-hint: --propose "<...>" | --bucket-only [--scheme ratio|absolute|percentile]
-allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Skill, mcp__llm-chat__chat
+allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Skill, Task, mcp__llm-chat__chat
 ---
 
 # /cheat-bump — Rubric / Bucket 升级
@@ -120,17 +120,59 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Skill, mcp__llm-chat__cha
 
 如果用户的提议含糊（如"ER 权重提一点"）→ 询问具体数值，**禁止自己猜**。
 
-### Phase 2: 校准池全量重打分
+### Phase 2: 校准池全量重打分（**强制走 blind sub-agent**）
 
 Glob `predictions/*.md` 中所有有完整复盘段的文件 → 校准池。
 
-对每篇：
-1. 读各维度分数（从输入快照段）
-2. 用新公式重算 composite
-3. 如果新公式增加了维度（如 MS / TS）→ **回追打分**：读稿子全文（或复盘段的关键证据）→ 给 MS / TS 打 0-5
-4. 写一份"重打表"到内存（或临时文件 `.cheat-cache/bump-rescores.json`）
+**bump 是工具最高风险动作——所有重打必须走 [cheat-score-blind](../cheat-score-blind/SKILL.md) sub-agent**。inline 重打 = 主 Claude 已经看过实绩，rank 一致性变成 overfit 而非真信号。
 
-**回追打分的诚实要求**：你已经看过实绩数据了，回追打 MS / TS 时**会被实绩污染**——这是不可避免的。在重打表里**明确标注** `score_post_hoc: true`。
+#### 强制约束
+
+- **不接受 self-scored fallback**——`/cheat-predict` 有 `--skip-blind` flag，但 `/cheat-bump` **没有**。如果 Task tool 不可用 → **abort bump**，向用户报告"先解决 Task tool 再 bump"
+- **不接受"我只重算 composite 不重打 dim"** —— 即使新公式只调权重不加维度，每条 prediction 的所有 dim 都要由 sub-agent 重新审 script。理由：旧 dim 分本身可能是污染的；权重变了不能保证旧 dim 还成立
+
+#### 对每篇 prediction：
+
+1. 解析 prediction 文件拿到对应 `scripts/<id>.md` 路径（从 `Script Path` header 字段）
+2. 校验 script 文件存在 + hash 跟 header `Script Hash` 一致；不一致 → 警告（script 改过了）但仍 spawn sub-agent
+3. **通过 Task tool spawn cheat-score-blind sub-agent**：
+   ```
+   Spawn cheat-score-blind sub-agent.
+
+   Input:
+     script_path: <prediction header 的 Script Path>
+     rubric_notes_path: rubric_notes.md
+     sidecar_path: .cheat-cache/bump-rescores/<prediction-id>.json
+
+   Task: 按 rubric_notes 当前公式（已是新版 vN+1）给 script 打分。
+   返回严格 JSON。写 sidecar 文件用于 bump 主流程批量读取。
+
+   不要读 state file / predictions/ / videos/ 任何其他文件。
+   不要询问用户 —— 你没有用户。
+   不要读这份 prediction 文件本身 —— 你只看 script + rubric。
+   ```
+4. 等 sub-agent 完成 → 读 sidecar JSON → 主流程用新公式算 composite
+5. 写"重打表"到 `.cheat-cache/bump-rescores.json`（汇总）。**每条 entry 标 `blind: true`** —— bump phase 5 cleanup 时把这个字段连同新分数写到 prediction 文件的 `Re-scored under v<N+1>` 行
+
+#### 还污染没污染的诚实标注
+
+即使走 sub-agent，**仍有两类残余 contamination 要在 bump report 里诚实标注**：
+
+| 类型 | 来源 | 标注字段 |
+|---|---|---|
+| 模型 prior contamination | sub-agent 仍是 Claude，RLHF 共享 | `model_prior_warning: true`（默认 true，不可关） |
+| 用户自己 rubric design bias | rubric_notes.md 是用户写的，自然 fit 自己内容 | `rubric_self_designed: true`（默认 true，不可关） |
+
+这两条提示用户 channel C（跨模型 audit）的不可省。bump 报告末尾必印："上面的 rank 一致性是 channel A 内的一致性。**最终决策必须等 channel C audit 通过**。"
+
+#### 失败模式
+
+| 症状 | 处理 |
+|---|---|
+| 某条 prediction 的 script 文件不见了 | sub-agent skip 该条，主流程汇总报告"N 条因 script 缺失被排除"。如剩余有效池 < MIN_SAMPLES → abort bump |
+| sub-agent 返回 `refusal != null` | 重发 Task 最多 3 次；仍败 → 该条标 `rescore_failed: true` 排除出校准池 |
+| Task tool 整个不可用 | abort bump，提示用户"Task tool 是 bump 的硬依赖。如真的离线环境，跑 `/cheat-bump --bucket-only` 走轻量分支" |
+| sub-agent 输出含 contamination_signal | 标 `suspicious: true` 但不排除——bump report 末尾列这些可疑条目让用户审 |
 
 ### Phase 3: 计算排序一致性
 
@@ -230,9 +272,11 @@ prompt:
 ```markdown
 
 ---
-**Re-scored under v2.1 on 2026-05-04**: composite=8.24 → 9.11
-（rubric bump 时全量重算，详见 rubric_notes.md 的 v2 → v2.1 升级 Memo）
+**Re-scored under v2.1 on 2026-05-04**: composite=8.24 → 9.11 (blind: true)
+（rubric bump 时全量重算，由 cheat-score-blind sub-agent 独立打分；详见 rubric_notes.md 的 v2 → v2.1 升级 Memo）
 ```
+
+`blind: true` 字段**必填**——告诉未来读这条记录的人"这是 channel B 隔离打分，不是主 Claude 自评"。如果某条 prediction 在 Phase 2 因 sub-agent 失败被排除 → 不会有 Re-scored 行（保持原样）。
 
 用 Edit 工具，匹配每个文件的最末尾。
 
@@ -388,10 +432,12 @@ baseline: 4.2w 中位数（基于 5 篇校准样本）
 ## Refusals
 
 - 「跳过校准池重打，直接换公式」 → 拒绝。原则 #2
+- 「跳过 cheat-score-blind sub-agent，主 Claude 直接重打就行」 → 拒绝。bump **不接受**任何 self-scored fallback——sub-agent 不可用 → abort bump，不接受"自审"
 - 「跳过外部 LLM 审核」 → 仅当 `CROSS_MODEL_AUDIT=false` 显式设置
 - 「这次 THRESHOLD 调到 3/5 让它过」 → 拒绝。改 THRESHOLD 是元层级 bump
 - 「保留所有旧观察作为历史」 → 违反原则 #3
 - 「先 bump，cleanup 下次再做」 → 拒绝。cleanup 是 bump 的一部分
+- 「只重算 composite 不重打 dim」 → 拒绝。新权重 × 旧 dim 仍是旧污染。每个 dim 都由 sub-agent 重审 script
 
 ## Integration
 

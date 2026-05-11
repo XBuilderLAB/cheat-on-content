@@ -50,16 +50,35 @@ last_trends_at=$(echo "$state" | jq -r '.last_trends_run_at // ""')
 last_published_at=$(echo "$state" | jq -r '.last_published_at // ""')
 hooks_installed=$(echo "$state" | jq -r '.hooks_installed // false')
 form_severe_mismatch=$(echo "$state" | jq -r '.rubric_form_severe_mismatch // false')
+last_prediction_self_scored=$(echo "$state" | jq -r '.last_prediction_self_scored // false')
+last_self_scored_at=$(echo "$state" | jq -r '.last_self_scored_at // ""')
 
 # --- Detect schema mismatch (read LATEST_SCHEMA from migrations/registry.md if reachable) ---
 # Strategy: hardcode current LATEST_SCHEMA here (bumped by maintainer alongside cheat-init).
 # If state.schema_version != LATEST_SCHEMA → suggest migrate (non-blocking).
-LATEST_SCHEMA="1.2"
+LATEST_SCHEMA="1.3"
 schema_mismatch=""
 if [[ "$schema_version" != "$LATEST_SCHEMA" && "$schema_version" != "unknown" ]]; then
   schema_mismatch="⚠️  schema 版本不一致：state=${schema_version}, skill 期望=${LATEST_SCHEMA}。建议跑 /cheat-migrate（非阻塞，部分新功能可能在迁移前异常）。"
 elif [[ "$schema_version" == "unknown" ]]; then
   schema_mismatch="⚠️  state.schema_version 字段缺失或损坏。建议跑 /cheat-status 检查文件，或备份后重 init。"
+fi
+
+# --- Detect blind-skip contamination (cheat-predict --skip-blind 或 Phase 2.5 选 b 触发) ---
+self_scored_warning=""
+if [[ "$last_prediction_self_scored" == "true" && -n "$last_self_scored_at" ]]; then
+  # Parse timestamp; tolerate +08:00 or Z suffix
+  self_scored_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${last_self_scored_at%%+*}" "+%s" 2>/dev/null || \
+                      date -j -f "%Y-%m-%dT%H:%M:%SZ" "$last_self_scored_at" "+%s" 2>/dev/null || \
+                      echo 0)
+  if [[ $self_scored_epoch -gt 0 ]]; then
+    days_since=$(( (now_epoch - self_scored_epoch) / 86400 ))
+    if [[ $days_since -ge 7 ]]; then
+      self_scored_warning="🚨 距上次 \`--skip-blind\` 自评预测已 ${days_since} 天——校准池累计的 contamination 风险在叠加。下次 /cheat-predict 走 sub-agent 即可清除此提示。"
+    else
+      self_scored_warning="⚠️  上次预测走了 \`--skip-blind\`（${days_since} 天前自评，未经 channel B 隔离）。下次 /cheat-predict 走默认即可清除。"
+    fi
+  fi
 fi
 
 # --- Derive confidence label (single source: state-management.md confidence 表) ---
@@ -176,6 +195,7 @@ echo "📈 校准样本: ${calibration_samples} | Confidence: ${confidence}"
 # Warnings (high priority)
 [[ -n "$buffer_warning" ]] && echo "" && echo "$buffer_warning"
 [[ -n "$schema_mismatch" ]] && echo "" && echo "$schema_mismatch"
+[[ -n "$self_scored_warning" ]] && echo "" && echo "$self_scored_warning"
 if [[ "$form_severe_mismatch" == "true" ]]; then
   echo "❌ rubric 与你的内容形态严重不匹配——预测几乎无意义。"
 fi

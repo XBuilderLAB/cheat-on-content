@@ -18,7 +18,7 @@
 
 ```json
 {
-  "schema_version": "1.2",
+  "schema_version": "1.3",
   "skill_version": "1.0.0",
 
   "rubric_version": "v0",
@@ -49,6 +49,8 @@
   "last_retro_at": null,
   "last_trends_run_at": null,
   "last_trends_added_count": 0,
+  "last_prediction_self_scored": false,
+  "last_self_scored_at": null,
 
   "consecutive_directional_errors": [],
   "pending_retros": [],
@@ -59,6 +61,15 @@
   "initialized_at": "2026-05-04T15:00:00+08:00"
 }
 ```
+
+### 关键变更（v1.3）
+
+相比 v1.2（MINOR，兼容）：
+
+- **新增 `last_prediction_self_scored: bool`**——`true` 仅当上一次 `/cheat-predict` 走了 `--skip-blind` flag 或 Phase 2.5 用户选 b（信主 Claude 自估）。cheat-status / SessionStart hook 据此 nag："上次预测没走 blind sub-agent，已 N 天"
+- **新增 `last_self_scored_at: ISO 8601 / null`**——`last_prediction_self_scored` 触发时的时间戳；走 sub-agent 时一起清回 null
+- 配合 [skills/cheat-score-blind](../skills/cheat-score-blind/SKILL.md) 的 channel B 隔离协议——把 contamination 跟踪从"靠 git history"升级为"靠 state 字段"
+- 老 state 缺这两字段 → 兜底 `false` / `null`，**MINOR 兼容**
 
 ### 关键变更（v1.2）
 
@@ -127,6 +138,8 @@
 | `last_retro_at` | ISO 8601 / null | cheat-retro |
 | `last_trends_run_at` | ISO 8601 / null | cheat-trends |
 | `last_trends_added_count` | int | cheat-trends |
+| `last_prediction_self_scored` | bool | cheat-predict（`--skip-blind` 或 Phase 2.5 选 b 时 true；下次走 sub-agent 时清回 false） |
+| `last_self_scored_at` | ISO 8601 / null | cheat-predict（跟随 `last_prediction_self_scored` 同步） |
 
 ### 列表队列
 

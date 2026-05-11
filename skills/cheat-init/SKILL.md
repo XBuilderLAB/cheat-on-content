@@ -270,7 +270,7 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
    写入（**所有 `<...>` 占位必须查上面 Q 的映射表换成具体 enum 值，绝不直接存字母**）：
    ```json
    {
-     "schema_version": "1.2",
+     "schema_version": "1.3",
      "skill_version": "1.0.0",
      "rubric_version": "v0",
      "content_form": "<查 Q1 映射表，写 enum 字符串如 \"opinion-video\">",
@@ -295,6 +295,8 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
      "last_retro_at": null,
      "last_trends_run_at": null,
      "last_trends_added_count": 0,
+     "last_prediction_self_scored": false,
+     "last_self_scored_at": null,
      "consecutive_directional_errors": [],
      "pending_retros": [],
      "shoots": [],
@@ -481,4 +483,6 @@ cheat-learn-from 完成后回到 init 的 Phase 5。
 | `last_bump_at` / `last_published_at` / `last_published_file` / `last_retro_at` / `last_trends_run_at` | Phase 3 | 全部 `null` |
 | `last_bump_self_audited` | Phase 3 | `false` |
 | `last_trends_added_count` | Phase 3 | `0` |
+| `last_prediction_self_scored` | Phase 3 | `false` |
+| `last_self_scored_at` | Phase 3 | `null` |
 | `initialized_at` | Phase 3 | now() 本地 ISO 8601，含 `+08:00` 时区，**不要 UTC `Z`** |

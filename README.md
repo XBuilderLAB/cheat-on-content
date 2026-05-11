@@ -112,7 +112,7 @@ cd cheat-on-content
 bash install.sh
 ```
 
-13 sub-skills are symlinked into your agent's skill directory. One install, every content project gets it.
+14 sub-skills are symlinked into your agent's skill directory. One install, every content project gets it.
 
 **Supported agents**: Claude Code (default) · Codex (`bash install.sh --codex`) · Both (`bash install.sh --all`)
 

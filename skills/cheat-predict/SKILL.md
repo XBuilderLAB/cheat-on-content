@@ -1,8 +1,8 @@
 ---
 name: cheat-predict
-description: 给最终稿写一份 immutable 盲预测日志。这是 cheat-on-content 整个校准循环的核心动作——预测段一旦写完不可改，由 hook 强制。**自动检测**：如目标文件已有 `## 预测` / `## 预测 v1` 段（被 cheat-shoot 调用走 v2 模式），改成 append `## 预测 v2` 而非覆盖。触发词："启动预测"/"start prediction"/"给这稿子打分并预测"/"写预测日志"。
-argument-hint: <script-path> [— mode: v1|v2] [— prediction-file: <path>]
-allowed-tools: Bash(*), Read, Write, Edit, Glob
+description: 给最终稿写一份 immutable 盲预测日志。这是 cheat-on-content 整个校准循环的核心动作——预测段一旦写完不可改，由 hook 强制。**自动检测**：如目标文件已有 `## 预测` / `## 预测 v1` 段（被 cheat-shoot 调用走 v2 模式），改成 append `## 预测 v2` 而非覆盖。**打分通过 Task tool 委派给 `cheat-score-blind` sub-agent**（context-isolated channel B），主 Claude review 后落盘。触发词："启动预测"/"start prediction"/"给这稿子打分并预测"/"写预测日志"。
+argument-hint: <script-path> [— mode: v1|v2] [— prediction-file: <path>] [— skip-blind]
+allowed-tools: Bash(*), Read, Write, Edit, Glob, Task
 ---
 
 # /cheat-predict — AI 主导的盲预测 + 用户 review
@@ -30,7 +30,9 @@ Confidence 派生表见 [shared-references/state-management.md](../../shared-ref
   ↓
 [Phase 1: 读 script + rubric + state + 派生 confidence]
   ↓
-[Phase 2: **Claude 自己**打 7 维分 + 算 composite]
+[Phase 2: **委派 cheat-score-blind sub-agent**（Task tool）拿 9 维盲打 + per-dim confidence]
+  ↓
+[Phase 2.5: 主 Claude 对 blind 输出做 review — 若任意维度 |delta| ≥ 2 vs 主估，弹给用户裁定]
   ↓
 [Phase 3: **Claude 自己**找锚点对比]
   ↓
@@ -52,11 +54,13 @@ Confidence 派生表见 [shared-references/state-management.md](../../shared-ref
 
 - **SCRIPTS_DIR = scripts/** — 草稿源目录
 - **PREDICTION_DIR = predictions/** — 落盘目录
-- **BLIND_CHECK = strict** — strict（默认）/ lenient（仅警告，不推荐）
+- **BLIND_CHECK = strict** — strict（默认）/ lenient（仅警告，不推荐）—— 跟 [blind-prediction-protocol.md](../../shared-references/blind-prediction-protocol.md) "见过数据"边界相关
+- **BLIND_SCORING = on**（默认）/ off —— 是否走 [cheat-score-blind](../cheat-score-blind/SKILL.md) sub-agent。off 等价于 `--skip-blind` flag，标 `last_prediction_self_scored: true` 给 cheat-status 警告
+- **DISAGREEMENT_THRESHOLD = 2** —— blind 与主 Claude 自评的单维度差异 |Δ| ≥ 此值 → Phase 2.5 弹用户裁定
 - **BUCKET_PRESET = auto** — 自动派生：有 baseline_plays → 按 baseline × {0.3 / 1 / 3 / 10 / 30}；无 baseline → 平台通用默认
 - **MIN_ANCHORS = 2** — 锚点对比期望 2 个；不够时显式标"锚点 N/A"段（不删段，不省略）
 
-> 💡 调用时覆盖：`/cheat-predict scripts/<id>.md — BLIND_CHECK: lenient`（**不推荐**）
+> 💡 调用时覆盖：`/cheat-predict scripts/<id>.md — BLIND_CHECK: lenient` / `--skip-blind`（都不推荐）
 
 ## Inputs
 
@@ -128,14 +132,70 @@ Confidence 派生表见 [shared-references/state-management.md](../../shared-ref
 6. 询问用户："这是你打算实际拍摄发布的最终稿吗？还是会再改？"——必须是最终稿
 7. 如果稿子字数与 `typical_duration_seconds` 派生范围严重不符（差 >50%）→ 提示用户："这条稿子 N 字，按你设的典型时长（X 分钟）应该是 M-K 字。是临时改了时长，还是稿子需要砍/补？"
 
-### Phase 2: Claude 自己打 7 维分 + 算 composite
+### Phase 2: 委派 cheat-score-blind sub-agent 拿盲打分
 
-**Claude 主动打分**，不让用户来打。每个维度给 0-5 整数分 + 一行理由（≤30 字，引用稿子里的具体词或场景）。
+**BLIND_SCORING=on**（默认）—— 主 Claude 不再 inline 打分。通过 Task tool spawn `cheat-score-blind`，让一个 context-isolated 的 sub-agent 只看 script + rubric_notes.md 给出 N 维分。
 
-按当前公式算 composite。所有阶段都算（v0 公式是等权 7 维 / 7 × 2.0，仍能算出数字，只是 confidence 标"🔴 极低"提醒读者别太信）。
+详见 [cheat-score-blind/SKILL.md](../cheat-score-blind/SKILL.md) 的"主 Claude 调用契约"段。**Task prompt 必须精简**：
 
-**这一步先在内存里做，不输出**——等 Phase 5 全部完成后一次性展示给用户 review。
-（不要每个 phase 都让用户确认——那是把工具变成 5 段交互式问答，烦。一次性展示才是 review。）
+```
+Spawn cheat-score-blind sub-agent.
+
+Input:
+  script_path: <Phase 0.5 解析出的 scripts/<id>.md>
+  rubric_notes_path: rubric_notes.md
+
+Task: 按 rubric_notes 当前公式给上面 script 打分。返回严格 JSON（见 cheat-score-blind SKILL.md Phase 2 schema）。
+不要读 state file / predictions/ / videos/ 任何其他文件。
+不要询问用户 —— 你没有用户。
+```
+
+**调用前自检**：把 Task prompt 串过 `grep -Ei '播放|阅读|点赞|评论数|实际|retro|复盘|实绩|w$|万$'`——命中 → 改 prompt 重发。
+
+**主 Claude 自己也内心估一份**（不发 sub-agent）——纯为 Phase 2.5 disagreement 检测，**不落盘**、**不替代 sub-agent 输出**。这个估值代表"如果我没用 sub-agent，我会打多少"，是 contamination 的客观指标。
+
+**沙盒 escape**：`BLIND_SCORING=off` 或 `--skip-blind` —— 主 Claude 自己打 7 维。state 立刻标 `last_prediction_self_scored: true` + `last_self_scored_at: <ISO>`，cheat-status 持续提示警告。仅用于：
+- Task tool 不可用（开发环境 / 离线）
+- 用户主动 audit 主 Claude 的 inline 判分能力（极少数）
+
+按当前公式算 composite——**用 sub-agent 回传的 dim 分**，不用主 Claude 自估。
+
+### Phase 2.5: Blind 输出 review + disagreement detection
+
+拿到 sub-agent JSON 后，主 Claude 必做的事：
+
+1. **JSON validity check**：`python3 -c "import json; json.loads(...)"` 应能解析；不能解析 → 主 Claude 重发 Task（最多 3 次重试），仍败 → abort，向用户报告
+2. **Contamination check**：`self_check.any_contamination_signal == true` → 警告用户"sub-agent 自报疑似 contamination"，但仍接受打分（confidence 降一档）
+3. **Refusal check**：`refusal != null` → 按 [cheat-score-blind/SKILL.md](../cheat-score-blind/SKILL.md) Phase 2 的处理表对应路径
+4. **Disagreement detection**（核心）：
+   - 主 Claude 内心估一份 N 维分（Phase 2 末尾的"自估"）
+   - 对每个维度算 `delta = |主估 - blind|`
+   - 任何维度 `delta >= DISAGREEMENT_THRESHOLD`（默认 2） → **弹给用户裁定**
+
+弹裁定 UX：
+
+```
+⚠️  blind sub-agent 跟主 Claude 在某些维度差异较大：
+
+| 维度 | blind (sub) | 主 Claude 自估 | delta | sub-agent 理由 |
+|---|---|---|---|---|
+| ER | 5 | 3 | 2 | "PPT加油猫猫开头—具象画面强" |
+| AB | 2 | 4 | 2 | "一人公司视角，受众窄" |
+
+谁更准？
+  a) 信 sub-agent（隔离打分，但同 Claude 模型）
+  b) 信主 Claude 自估（有更多对话上下文，可能是 contamination）
+  c) 我自己定（你直接给分）
+
+回 a / b / c <你的分数>
+```
+
+用户选：
+- a → 用 sub-agent 全套分进 Phase 3
+- b → 用主 Claude 自估全套分（视为有意接受 contamination）→ 强制标 `last_prediction_self_scored: true`
+- c → 用户给的分覆盖该维度，其他维度仍走 sub-agent → 记到 `User Override`
+
+**所有 delta** —— 即使全 < THRESHOLD —— 都记录到 prediction header 的 `BlindScore Disagreement` 字段（详见 [prediction-anatomy.md](../../shared-references/prediction-anatomy.md) 组件 1）。delta=0 也要记录。
 
 ### Phase 3: 锚点对比
 
@@ -255,6 +315,8 @@ predictions/YYYY-MM-DD_<id>_<short-title>.md
 - `Calibration Samples` + `Confidence`（从 state 派生）
 - `Prediction Basis`：`pre_shoot`（v1 默认）
 - `Scored By`：`claude` / `claude+user_override`
+- **`BlindScored By`**：`subagent-v1`（Phase 2 默认）/ `main-claude-self`（`--skip-blind` 时） / `mixed`（Phase 2.5 用户裁定 b/c）
+- **`BlindScore Disagreement`**：JSON 字段列表，每维度 `{dim, blind, self, delta, decided_as}`，**所有维度必记**（即使 delta=0）
 - `User Override`（如有覆盖）：列出哪些字段被用户改了
 - 其他见 [prediction-anatomy.md](../../shared-references/prediction-anatomy.md) 组件 1
 
@@ -307,13 +369,20 @@ cheat-retro 复盘时按"读最后一个 `## 预测 vN`"逻辑，自然取到 v2
     "video_folder": "videos/YYYY-MM-DD_<id>_<short>/",
     "started_at": "<ISO timestamp>",
     "rubric_version": "<v0/v2/...>"
-  }
+  },
+  "last_prediction_self_scored": <true 仅当 --skip-blind / Phase 2.5 选 b>,
+  "last_self_scored_at": <ISO 当 last_prediction_self_scored=true 时>
 }
 ```
 
 `video_folder` 为 null 表示用户跑的是裸 .md 文件，没建 video folder。
 
 `in_progress_session` 在 `cheat-publish` 触发时清除。如果用户预测后从未 publish（弃稿），下次 `/cheat-init` 或 `/cheat-status` 检测到陈旧 in_progress 会询问是否清理。
+
+`last_prediction_self_scored`：
+- `true` 仅当本次预测走了 `--skip-blind` 或 Phase 2.5 用户选了 b（信主 Claude 自估）
+- 一旦 `true` → cheat-status 持续 nag："上次预测没走 blind sub-agent，已 N 天"——直到下次 normal `cheat-predict`（走 sub-agent）触发后才清回 `false`
+- `last_self_scored_at` 跟随更新；下次 `cheat-predict` 走 sub-agent → 这两个字段一起被重置
 
 ### Phase 8: 控制台总结
 
@@ -371,6 +440,8 @@ bucket 押注：30-100w（中枢 50w）
 - 「跳过反事实场景，太麻烦」 → 拒绝。反事实是复盘诊断的依据，缺它复盘退化为"准 / 不准"
 - 「可不可以只写 bucket，不写概率分布」 → 拒绝。概率分布是逼你诚实的工具
 - 「这次先用 lenient 模式，下次再 strict」 → 询问原因。如果是测试 / 演练 → 允许且文件明确标 reconstructed；如果是想偷懒 → 拒绝
+- 「sub-agent 太慢，你直接打就行」 → 用 `--skip-blind` flag 显式声明。**不接受**主 Claude 自作主张跳过 sub-agent。flag 触发 state.last_prediction_self_scored=true，cheat-status 持续提示直到下次 normal 调用清除
+- 「Phase 2.5 选 b 后我不想标 last_prediction_self_scored=true」 → 拒绝。选 b 等于"我有意接受主 Claude 自评"——必须留下污染追踪轨迹
 - 「我是 cold-start 但想跑完整版预测，给我 bucket 数字」 → 拒绝。前 5 篇 bucket 数字是 false precision，给反而误导。等第 5 篇复盘后 cheat-status 会主动提示解锁。如果用户确实想要数字（罕见，自我教育目的）→ 允许但在文件头醒目标 `**Numerical predictions in cold-start are NOT predictive — for self-education only**`
 
 ## Integration

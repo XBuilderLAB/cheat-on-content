@@ -6,7 +6,8 @@ Icon?
 ._*
 
 # Claude Code per-user config (含本地路径 / 个人 permission grants)
-.claude/settings.local.json
+# 整个 .claude/ 目录在源码 repo 里都是本地状态——hooks/settings 的项目级配置走用户自己的 content project 不走这里
+.claude/
 
 # Python (whisper adapter / score-curve.py 跑过留下的)
 __pycache__/

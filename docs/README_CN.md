@@ -112,7 +112,7 @@ cd cheat-on-content
 bash install.sh
 ```
 
-13 个子 skill 软链接到你 agent 的 skill 目录。装一次，所有内容项目都能用。
+14 个子 skill 软链接到你 agent 的 skill 目录。装一次，所有内容项目都能用。
 
 **支持的 agent**：Claude Code（默认）· Codex（`bash install.sh --codex`）· 两个都装（`bash install.sh --all`）
 

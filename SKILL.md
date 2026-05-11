@@ -143,7 +143,8 @@ cheat-on-content/
 │   ├── cheat-recommend/SKILL.md       # ✅ 候选池排序推荐（按 buffer 颜色 + 1 稳 + 1 实验）
 │   ├── cheat-trends/SKILL.md          # ✅ 热点抓取（日常补充候选池，多 adapter）
 │   ├── cheat-status/SKILL.md          # ✅ 状态看板（含 buffer 警戒）
-│   └── cheat-migrate/SKILL.md         # ✅ schema 升级（老用户 git pull 后用）
+│   ├── cheat-migrate/SKILL.md         # ✅ schema 升级（老用户 git pull 后用）
+│   └── cheat-score-blind/SKILL.md     # ✅ Channel B 隔离打分 sub-agent（仅 Task tool 调用）
 ├── migrations/                        # schema 演进单一来源
 │   ├── registry.md                    # ✅ LATEST_SCHEMA + 版本链表
 │   └── <from>-to-<to>.md              # ✅ 每步迁移的 WHAT/WHY/HOW/Manual fallback
