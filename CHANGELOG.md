@@ -8,6 +8,38 @@ All notable changes to cheat-on-content will be documented here.
 
 ## [Unreleased]
 
+### Fixed — cheat-shoot DIFF_METRIC 在口语化场景的 v2 误触发（**BREAKING for v2-trigger-logic**）
+
+**问题**：cheat-shoot Phase 3b 用 line-level unified diff 算 `diff_pct = (added + removed) * 100 / orig_lines`。但**创作者真实场景**——draft 是 markdown 长句（一行 ~50 字），拍摄稿是 whisper 转录的口语化短断句（每行 ~5-10 字）——同样的内容会 inflate diff_pct 到 100-200%，触发本不该的 v2 重判。
+
+**实测复现**（use clone PR pre-fix）：
+- draft markdown 63 行 / ~380 字
+- 拍摄转录 100 行 / 同 ~380 字
+- 内容几乎完全保留（审稿人原句一字不差 + 5 年前反应概念 + 升维段所有金句）
+- 唯一新增：1 句 brand 锚定 "全面拥抱 AI"
+- **line-level diff_pct = 198%** ⚠️ v2 错误触发
+- 语义内容真实 diff ≈ 15-25%
+
+**修复**：拆 metric。
+- **DIFF_METRIC=char_levenshtein_normalized**（新默认）—— [tools/diff_pct.py](tools/diff_pct.py) 先 normalize（去 markdown header / 分隔线 / 列表标记 / 装饰标点 / 折叠所有空白），再算 char-level Levenshtein / max(len_a, len_b)
+- backend 优先级：`rapidfuzz`（C-backed，~ms 级；需 `pip install rapidfuzz`） → `difflib.SequenceMatcher`（stdlib，永远可用，~10ms 级）
+- **V2_TRIGGER_THRESHOLD = 0.30** 保持不动（阈值经验合理）
+- legacy line-level 保留为终极 fallback（只在 python3 + tools/diff_pct.py 都不可达时降级）
+
+**测试**：3 fixture × 2 backend = 6 case，全过：
+
+| Case | 内容 | 期望范围 | difflib | rapidfuzz |
+|---|---|---|---|---|
+| 1 | markdown 长句 vs 转录短断句（内容同） | < 30 | 7 | 12 |
+| 2 | 完全不同主题 | ≥ 60 | 88 | 97 |
+| 3 | 加 20% outro/CTA | 10-30 | 14 | 25 |
+
+跑 `bash tools/diff_pct_test.sh` 复现。
+
+**已知局限**：
+- 历史 v2 prediction 文件保留 line-level 数字作 audit trail——不重新走过去的 prediction
+- normalize 是启发式（中文标点）——对其他语言 / 非典型 markdown 可能需调整 regex
+
 ### Fixed — `rubric_notes.md` 实绩泄漏漏洞（**BREAKING for blind channel integrity**）
 
 **问题**：PR #11 引入的 cheat-score-blind sub-agent 承诺只读 `scripts/<id>.md` + `rubric_notes.md` 两个文件。但 cheat-bump Phase 5 把升级 Memo（含真实视频名 + 实绩 + 派生证据）写进了 `rubric_notes.md`——sub-agent 通过白名单读到了本不该看的实绩，盲打分变成"看过实绩的事后合理化"。实测复现：5 条已发视频里 2 条 sub-agent 自动标 `any_contamination_signal: true`（refusal=`non_blind_warning`，所有维度 confidence 降 medium）。

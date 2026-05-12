@@ -41,8 +41,9 @@ cheat-shoot 自己**不**写预测内容——所有预测落盘逻辑在 cheat-
 ## Constants
 
 - **REQUIRE_PREDICTION = true** — 拍前必须先有 v1 prediction 文件
-- **V2_TRIGGER_THRESHOLD = 0.30** — 稿子 diff 超过 30%（行级 unified diff 行数 / 原稿子行数）→ 默认建议 v2 重判；低于 30% 询问用户是否仍要 v2
-- **DIFF_METRIC = lines** — 用 `diff -u | grep '^[+-]' | wc -l` 算改动行数 / 原文件行数
+- **V2_TRIGGER_THRESHOLD = 0.30** — normalize 后 char-level diff 超过 30% → 默认建议 v2 重判；低于 30% 询问用户是否仍要 v2
+- **DIFF_METRIC = char_levenshtein_normalized**（**默认**）—— 通过 [`tools/diff_pct.py`](../../tools/diff_pct.py) 调用：先 normalize（去 markdown header / 分隔线 / 列表标记 / 装饰标点 / 折叠所有空白），再算 char-level Levenshtein / max(len_a, len_b)。preferred backend `rapidfuzz`，fallback `difflib.SequenceMatcher`（stdlib，永远可用）。**旧版 line-level 在口语化转录场景误报严重**（draft 长 markdown 句 vs whisper 转录的短断句，内容几乎不变但 line-level 算出 ~200% diff）—— PR #14 修复
+- **DIFF_METRIC=lines** —— legacy fallback：当 python3 完全不可用或 tools/diff_pct.py 找不到时降级到 `diff -u | grep '^[+-]' | wc -l` 算法
 
 ## Inputs
 
@@ -99,11 +100,27 @@ c) 大改了，基本是另一条 → 走 _redo 流程：
 3. 若用户没保留（即兴）→ 标 `script_lost`，写占位文件 + 警告"v2 重判跳过——下次建议留稿（哪怕 voice memo 转录）"，进 Phase 4
 4. 提供了的话：算 diff
    ```bash
-   added=$(diff -u scripts/<id>.md videos/<id>/script.md | grep -c '^+')
-   removed=$(diff -u scripts/<id>.md videos/<id>/script.md | grep -c '^-')
-   total_orig=$(wc -l < scripts/<id>.md)
-   diff_pct=$(( (added + removed) * 100 / total_orig ))
+   # 解析 cheat-on-content 源码根（cheat-shoot 是 symlink 装的）
+   SKILL_REAL="$(readlink -f ~/.claude/skills/cheat-shoot 2>/dev/null || readlink ~/.claude/skills/cheat-shoot 2>/dev/null)"
+   if [[ -n "$SKILL_REAL" ]]; then
+     REPO_ROOT="$(cd "$SKILL_REAL/../.." && pwd)"
+     DIFF_TOOL="$REPO_ROOT/tools/diff_pct.py"
+   fi
+
+   if [[ -n "${DIFF_TOOL:-}" && -f "$DIFF_TOOL" ]] && command -v python3 >/dev/null 2>&1; then
+     # 默认 char-level Levenshtein on normalized text（rapidfuzz preferred, difflib fallback）
+     diff_pct=$(python3 "$DIFF_TOOL" "scripts/<id>.md" "videos/<id>/script.md")
+   else
+     # legacy line-level fallback——只在 python3 或 diff_pct.py 都不可用时用
+     added=$(diff -u scripts/<id>.md videos/<id>/script.md | grep -c '^+')
+     removed=$(diff -u scripts/<id>.md videos/<id>/script.md | grep -c '^-')
+     total_orig=$(wc -l < scripts/<id>.md)
+     diff_pct=$(( (added + removed) * 100 / total_orig ))
+     echo "⚠️  fallback 到 line-level diff——口语化转录会 inflate diff_pct，可能误触发 v2"
+   fi
    ```
+
+   **为什么 normalize + char-level**：line-level diff 在创作者真实场景（draft 是 markdown 长句、拍摄稿是 whisper 转录的口语化短行）算出 ~200% 差异但内容几乎不变。char-level Levenshtein 在 normalize 后稳定反映**内容**差异，而非格式差异。详见 [`tools/diff_pct.py`](../../tools/diff_pct.py) + `tools/diff_pct_test.sh`（3 fixture 在两个 backend 上全过）。
 5. **判定 v2 触发**：
    - `diff_pct >= 30` → 默认建议 v2 重判，**主动调用** `/cheat-predict — mode: v2 — prediction-file: predictions/<id>.md` 传 `videos/<id>/script.md` 作 input。cheat-predict 走 v2 模式 append `## 预测 v2`
    - `diff_pct < 30` → 询问用户："只改了 N% 的内容，要重判吗？默认不（v1 预测仍有效）"。用户说要 → 同上调用；用户说不 → 跳过 v2，继续 Phase 4
