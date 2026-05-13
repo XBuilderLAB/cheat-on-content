@@ -87,6 +87,7 @@ fi
 
 # Run from PROJECT_ROOT so .auth/ is found and outputs go to expected paths
 cd "$PROJECT_ROOT"
+export CHEAT_PROJECT_ROOT="$PROJECT_ROOT"
 
 # Override VIDEOS_DIR via env var so review.py writes to user's videos/ not its own
 # (review.py uses ROOT/videos by default; we override to use user's project)

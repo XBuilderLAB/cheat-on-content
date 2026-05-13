@@ -16,6 +16,7 @@ __pycache__/
 .venv/
 venv/
 .python-version
+tests/
 
 # 用户项目数据（万一开发者在 cheat-on-content 源码目录里跑了 cheat-init）
 # 这些文件应该在用户自己的 content project 里，不该污染源码 repo

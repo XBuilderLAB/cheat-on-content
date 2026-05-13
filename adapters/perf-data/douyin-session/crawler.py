@@ -11,9 +11,8 @@ from pathlib import Path
 from typing import Any
 
 from playwright.async_api import BrowserContext, Page, Response, async_playwright
+from paths import auth_dir, debug_dir
 
-AUTH_DIR = Path(__file__).parent / ".auth"
-DEBUG_DIR = Path(__file__).parent / ".debug"
 CREATOR_HOME = "https://creator.douyin.com/creator-micro/home"
 CREATOR_CONTENT = "https://creator.douyin.com/creator-micro/content/manage"
 
@@ -28,9 +27,10 @@ class Session:
     @classmethod
     async def open(cls, headless: bool = False) -> Session:
         pw = await async_playwright().start()
-        AUTH_DIR.mkdir(exist_ok=True)
+        auth_path = auth_dir()
+        auth_path.mkdir(exist_ok=True)
         ctx = await pw.chromium.launch_persistent_context(
-            user_data_dir=str(AUTH_DIR),
+            user_data_dir=str(auth_path),
             headless=headless,
             viewport={"width": 1440, "height": 900},
             args=["--disable-blink-features=AutomationControlled"],
@@ -99,8 +99,9 @@ async def fetch_recent_videos(sess: Session, limit: int = 50) -> list[dict]:
             await asyncio.sleep(1.5)
         videos = _parse_video_list(captured, limit)
         if not videos:
-            DEBUG_DIR.mkdir(exist_ok=True)
-            (DEBUG_DIR / "creator_urls.txt").write_text("\n".join(all_urls), encoding="utf-8")
+            debug_path = debug_dir()
+            debug_path.mkdir(parents=True, exist_ok=True)
+            (debug_path / "creator_urls.txt").write_text("\n".join(all_urls), encoding="utf-8")
             print(f"[诊断] 视频列表为空，{len(all_urls)} 个请求已 dump。")
         return videos
     finally:
@@ -178,8 +179,9 @@ async def fetch_video_detail(sess: Session, aweme_id: str) -> dict:
         await page.goto(url, wait_until="domcontentloaded", timeout=60000)
         await asyncio.sleep(6)
         if not captured:
-            DEBUG_DIR.mkdir(exist_ok=True)
-            (DEBUG_DIR / "detail_urls.txt").write_text("\n".join(all_urls), encoding="utf-8")
+            debug_path = debug_dir()
+            debug_path.mkdir(parents=True, exist_ok=True)
+            (debug_path / "detail_urls.txt").write_text("\n".join(all_urls), encoding="utf-8")
             print("[诊断] 详细数据接口没拦到，已 dump URL 列表。")
         return {"captured": captured}
     finally:
@@ -230,9 +232,10 @@ async def fetch_comments_creator(sess: Session, aweme_id: str, max_pages: int = 
             await page.evaluate("window.scrollBy(0, 1500)")
             await asyncio.sleep(1.5)
 
-        DEBUG_DIR.mkdir(exist_ok=True)
-        await page.screenshot(path=str(DEBUG_DIR / "creator_comment_page.png"))
-        (DEBUG_DIR / "creator_comment_urls.txt").write_text("\n".join(all_urls), encoding="utf-8")
+        debug_path = debug_dir()
+        debug_path.mkdir(parents=True, exist_ok=True)
+        await page.screenshot(path=str(debug_path / "creator_comment_page.png"))
+        (debug_path / "creator_comment_urls.txt").write_text("\n".join(all_urls), encoding="utf-8")
 
         # 解析：抽取所有 data 里可能包含评论的结构
         comments: list[dict] = []
@@ -311,8 +314,9 @@ async def fetch_comments(sess: Session, aweme_id: str, max_pages: int = 60) -> l
                 pass
         await asyncio.sleep(4)
 
-        DEBUG_DIR.mkdir(exist_ok=True)
-        await page.screenshot(path=str(DEBUG_DIR / "comment_page.png"))
+        debug_path = debug_dir()
+        debug_path.mkdir(parents=True, exist_ok=True)
+        await page.screenshot(path=str(debug_path / "comment_page.png"))
 
         # 策略：把最后一条评论 scrollIntoView 触发 IntersectionObserver 懒加载
         last_count = 0
@@ -353,7 +357,7 @@ async def fetch_comments(sess: Session, aweme_id: str, max_pages: int = 60) -> l
             dedup.append(c)
         dedup.sort(key=lambda x: x["digg_count"], reverse=True)
 
-        (DEBUG_DIR / "comment_urls.txt").write_text("\n".join(all_urls), encoding="utf-8")
+        (debug_path / "comment_urls.txt").write_text("\n".join(all_urls), encoding="utf-8")
         return dedup
     finally:
         await page.close()

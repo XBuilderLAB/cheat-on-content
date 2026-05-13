@@ -279,6 +279,7 @@ def write_state(state):
 `.cheat-cache/` 目录**不应该**被纳入 git：
 - 含 `usage.jsonl`（meta-logging 钩子的本地日志）
 - 含 `trends-history.jsonl`（trend 抓取的去重缓存）
+- 也可能含 adapter 调试文件（如 `douyin-session-debug/`）
 - 这些是设备本地状态，跨设备同步无意义
 
 `/cheat-init` 应自动在用户项目根追加（不覆盖）`.gitignore`：

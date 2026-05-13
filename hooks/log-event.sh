@@ -39,9 +39,8 @@ if command -v jq >/dev/null 2>&1; then
       tool: (.tool_name // null),
       file: (.tool_input.file_path // null),
       success: (.tool_response.success // null),
-      prompt_excerpt: (
-        (.user_prompt // "" | tostring) | .[:120]
-      )
+      prompt_present: ((.user_prompt // null) != null),
+      prompt_chars: ((.user_prompt // "" | tostring) | length)
     }
   ' 2>/dev/null || echo "")
   if [[ -z "$event_json" ]]; then

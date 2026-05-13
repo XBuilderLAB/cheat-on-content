@@ -8,15 +8,12 @@
 from __future__ import annotations
 
 import asyncio
-import shutil
 import sys
 from pathlib import Path
 
 import crawler
 import renderer
-
-ROOT = Path(__file__).parent
-VIDEOS_DIR = ROOT / "videos"
+from paths import videos_dir
 
 
 def _prompt(msg: str) -> str:
@@ -61,7 +58,8 @@ async def run() -> None:
 
     注意：会打开两次 Chromium（一次选视频，一次抓全量）。
     """
-    VIDEOS_DIR.mkdir(exist_ok=True)
+    active_videos_dir = videos_dir()
+    active_videos_dir.mkdir(parents=True, exist_ok=True)
 
     print("[选视频] 打开创作者中心拉列表……")
     sess = await crawler.Session.open()
@@ -87,7 +85,8 @@ async def run() -> None:
 
 
 async def run_with_id(aweme_id: str, script_path: str | None) -> None:
-    VIDEOS_DIR.mkdir(exist_ok=True)
+    active_videos_dir = videos_dir()
+    active_videos_dir.mkdir(parents=True, exist_ok=True)
 
     script = ""
     if script_path:
@@ -104,7 +103,7 @@ async def run_with_id(aweme_id: str, script_path: str | None) -> None:
     detail = result["detail"]
     comments = result["comments"]
 
-    out_dir = renderer.output_dir_for(video, VIDEOS_DIR)
+    out_dir = renderer.output_dir_for(video, active_videos_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     if script:
         (out_dir / "script.txt").write_text(script, encoding="utf-8")

@@ -1,5 +1,5 @@
 {
-  "_comment": "cheat-on-content meta-logging hook. Passively records every cheat-* skill invocation, tool call, and session lifecycle event to .cheat-cache/usage.jsonl. All hooks are async fire-and-forget — never blocks. Used by /cheat-status to compute things like 'distance since last bump'.",
+  "_comment": "cheat-on-content meta-logging hook. Passively records local event metadata to .cheat-cache/usage.jsonl. It stores event type, tool/file metadata, and prompt presence/length only — not raw prompt excerpts. All hooks are async fire-and-forget — never blocks. Used by /cheat-status to compute things like 'distance since last bump'.",
   "hooks": {
     "PostToolUse": [
       {
