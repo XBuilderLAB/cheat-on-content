@@ -8,6 +8,20 @@ All notable changes to cheat-on-content will be documented here.
 
 ## [Unreleased]
 
+### Added — cheat-seed Phase 4.5：humanizer 自检 pass（去 AI 味）
+
+**问题**：Claude 自己写的 cheat-seed 初稿天然带 AI 写作 tells——em-dash 滥用、rule of three、inflated 词汇、空泛归因、-ing 浅层分析。用户拿到的起点"机器味"重。
+
+**改动**：draft 写完落盘后、展示给用户前，新增 Phase 4.5——用 [`humanizer`](https://github.com/blader/humanizer) skill（MIT，外部项目，18k stars）过一遍去掉 AI tells。
+- 只 humanize **正文**，不动 header 的"必须改写"警告（那是有意的脚手架标记）
+- **voice calibration**：有历史脚本 / `script_patterns.md` 时作为参考样本一起传——往"用户的声音"靠，不是"通用人声"
+- 报告修了哪些 tell，Phase 5 输出展示
+- `HUMANIZE_DRAFT = on` 默认；humanizer 未装时优雅跳过 + 提示如何启用
+- **不污染校准**：cheat-seed draft 不是被预测/发布的东西——cheat-predict 打分的是用户最终稿，humanize 初稿只是给更干净的起点
+- **不替用户改写**：humanizer 去 AI 味 ≠ 变成用户的声音，"必须改写"警告依然成立
+
+humanizer **不打包**进 cheat-on-content——用户自己 `git clone` 到 `~/.claude/skills/humanizer/`。
+
 ### Fixed — douyin-session 运行时路径隐私漏洞（@level5Ninja [#16](https://github.com/XBuilderLAB/cheat-on-content/pull/16)）
 
 **问题**：douyin-session adapter 把 `.auth/`（**含抖音登录 cookie**）、debug 截图、report 写进 **skill 源码目录** 而不是用户内容项目——symlink 安装时，用户的会话凭据会落在 cheat-on-content repo 里，有被 commit 的风险。meta-logging hook 还把每条 user prompt 前 120 字存进 `usage.jsonl`，采集过度。

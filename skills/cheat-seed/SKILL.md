@@ -59,6 +59,7 @@ Batch Mode — 用户显式要批量（`/cheat-seed --batch 5`）：
 - **MAX_DEEP_DIVE_TURNS = 4** — Mode A 收敛阶段最多 4 轮反问，避免 AI 过度盘问
 - **WITH_DRAFT = yes** — 默认确认角度后立刻写 draft；用户可说 "等下，我自己写" 跳过
 - **DRAFT_LENGTH** — 派生自 `state.typical_duration_seconds`：30s→100-200字 / 90s→250-500字 / 240s→600-1000字 / 450s→1100-2000字 / 900s→2200+字
+- **HUMANIZE_DRAFT = on**（默认）/ off —— 写完 draft 后用 `humanizer` skill 过一遍，去掉 AI 写作 tells（em-dash 滥用 / rule of three / inflated 词汇 / 空泛归因等）。off 时直接出原始 AI draft。**只 humanize 正文，不动 header 的"必须改写"警告**
 
 ## Inputs
 
@@ -305,21 +306,45 @@ Mode A 默认深挖用户经历。但如果**用户讲的本身是时事话题**
 [draft 正文，段落版]
 ```
 
-`WITH_DRAFT=no`（用户说"我自己写"）→ 跳过 Phase 4。
+`WITH_DRAFT=no`（用户说"我自己写"）→ 跳过 Phase 4 + Phase 4.5。
+
+### Phase 4.5: humanizer 自检 pass（去 AI 味）
+
+`HUMANIZE_DRAFT=on`（默认）—— draft 写完落盘后，**在展示给用户前**用 `humanizer` skill 过一遍。Claude 自己写的初稿天然带 AI tells（em-dash 滥用 / rule of three / "inflated" 词汇 / 空泛归因 / -ing 浅层分析），这一步把它们清掉，让 draft 是个更干净的起点。
+
+**为什么安全**（不污染校准）：cheat-seed 的 draft 不是被预测/发布的东西——用户改写后、cheat-predict 打分的是**用户最终稿**。humanize 初稿只是给用户更好的起点。
+
+步骤：
+
+1. 检查 `humanizer` skill 是否可用（`~/.claude/skills/humanizer/` 存在）：
+   - 不可用 → 跳过 Phase 4.5，在 Phase 5 输出里加一行"（humanizer 未装，draft 是原始 AI 版——`git clone https://github.com/blader/humanizer` 到 ~/.claude/skills/ 可启用自动去 AI 味）"
+2. 可用 → 通过 Skill tool 调 `humanizer`，**只传 draft 正文**（`---` 分隔线之后的部分），**绝不传 header**：
+   - header 的 `⚠️ Draft by Claude — 你必须改写后再拍` 警告是**有意的脚手架标记**，不是要 humanize 的散文
+   - **voice calibration**：如果用户有历史脚本（`videos/*/script.md`）或填过 `script_patterns.md`，把最近 1-2 份作为 humanizer 的 voice 参考样本一起传——让它往"**这个用户的声音**"靠，而不是"通用人声"
+3. humanizer 返回去 AI 味的正文 → 用 Edit 替换 draft 文件的正文段（header 不动）
+4. 记录 humanizer 报告的"修了哪些 tell"（如 `em-dash 滥用 ×3 / rule of three ×2 / inflated 词汇: "深刻" "本质上"`），Phase 5 输出里展示
+
+**纪律**：
+- humanizer 是**去 AI 味**，不是**替用户改写**。它让 draft 不那么像机器写的，但**仍不是用户的声音**——header 的"必须改写"警告依然成立，Phase 5 输出要重申
+- 如果 humanizer 把某句改得偏离了 `结构选型` / 用到的 pattern → 以 pattern 为准，那句回滚（pattern 是和用户讨论定的，humanizer 不该推翻）
 
 ### Phase 5: 输出"下一步" + 询问继续
 
 ```
 ✅ Draft 写完：scripts/2026-05-04_<id>_<short>.md
+🧹 humanizer 过了一遍：修了 em-dash 滥用 ×3 / rule of three ×2 / inflated 词汇 2 处
+   （draft 现在不那么"机器味"了——但这仍是脚手架，不是你的声音）
 
 接下来你可以：
-- 改写这份 draft（直接在原文件改）
+- 改写这份 draft（直接在原文件改）—— 加你的语气、经历、真实金句
 - 改完跑 "打分这篇 scripts/<...>.md" 看 7 维评分
 - 决定要拍 → "启动预测 scripts/<...>.md"
 
 下一篇你想做什么？
 （直接告诉我具体经历 / topic，或者说"今天就这样"结束）
 ```
+
+> humanizer 那行只在 `HUMANIZE_DRAFT=on` 且 skill 可用时出现。未装时换成一行提示如何启用。
 
 用户说"今天就这样" → 结束 cheat-seed。
 用户给新 topic → 回 Phase 1 重新分流。
@@ -332,6 +357,7 @@ Mode A 默认深挖用户经历。但如果**用户讲的本身是时事话题**
 4. **深挖围绕用户给的话题**，不要切到别的——你说"开会被领导骂"，AI 不该问"那你最近有没有觉得 AI 让大家..."这种平行话题
 5. **写 draft 必须读 script_patterns.md**——按用户已有 pattern 选结构
 6. **draft 是脚手架**——header 加醒目警告"必须改写"
+7. **humanizer 只去 AI 味，不替用户改写**——Phase 4.5 让 draft 不那么机器味，但它仍不是用户的声音；"必须改写"的警告不因为过了 humanizer 就失效
 
 ## Refusals
 
@@ -348,5 +374,6 @@ Mode A 默认深挖用户经历。但如果**用户讲的本身是时事话题**
 - 上游：`/cheat-recommend` 在 candidates 空时引导文案中提及 `/cheat-seed`
 - 上游：`/cheat-status` 在 `pool_status=none + 距 init >24h` 时提示"还没拍——跑 /cheat-seed？"
 - 下游：用户的 candidate → candidates.md（tier1，已 deep_read）
-- 下游：（默认）draft → scripts/<id>.md → 用户改写 → /cheat-predict
+- 下游：（默认）draft → Phase 4.5 humanizer 去 AI 味 → scripts/<id>.md → 用户改写 → /cheat-predict
+- 可选依赖：[`humanizer`](https://github.com/blader/humanizer) skill（MIT，外部项目）。装在 `~/.claude/skills/humanizer/` 时 Phase 4.5 自动启用；未装则优雅跳过。**不打包进 cheat-on-content**——用户自己 clone
 - 与 `/cheat-trends` 区别：cheat-seed 是**讨论 + 写 draft**（重 conversation）；cheat-trends 是**多 adapter 抓 + 粗打分**（重 fetch）。两者目的不同，不互相替代。
