@@ -8,6 +8,16 @@ All notable changes to cheat-on-content will be documented here.
 
 ## [Unreleased]
 
+### Fixed — cheat-seed draft 写成字幕格式（一句一行）
+
+**问题**：用户反馈 cheat-seed 写的 draft 正文是"一句话一行"的字幕格式，而不是段落版。根因不是文档缺失——"不要字幕格式"的指令在 4 个文件里都有，但**全是散文指令**。生成 draft 那一刻，模型"video script = 提词器短行"的训练先验压过了埋在 Phase 4 散文里的一句话。
+
+**修复**（两手）：
+- **A — 生成时压先验**：Phase 4 draft 模板块加 ❌字幕格式 / ✅段落版 的**具象并排对照**，就放在正文占位符旁边——generation 那一刻眼睛在示例上，先验被锚点压住
+- **B — 落盘后确定性兜底**：新增 Phase 4.5a line-format 自检——算正文 `avg_chars_per_line`，`< 15 字 且 行数 ≥ 8` → 判定字幕格式 → 自动重排为 3-6 段段落版。不靠模型自觉，靠 `awk` 判定
+- Phase 4.5 顺序固定：**先 4.5a 修版式，再 4.5b humanizer**（humanizer 处理散文，喂碎行会乱）
+- batch 模式的 N 份 draft 同样走 Phase 4 格式 + Phase 4.5 自检
+
 ### Added — cheat-seed Phase 4.5：humanizer 自检 pass（去 AI 味）
 
 **问题**：Claude 自己写的 cheat-seed 初稿天然带 AI 写作 tells——em-dash 滥用、rule of three、inflated 词汇、空泛归因、-ing 浅层分析。用户拿到的起点"机器味"重。

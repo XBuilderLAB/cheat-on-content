@@ -256,7 +256,7 @@ Mode A 默认深挖用户经历。但如果**用户讲的本身是时事话题**
 1. 问 3 个清单问题（兴趣 / 调性 / 红线）—— Batch 模式才问这些
 2. 抓热点 + Claude brainstorm 15 候选
 3. 用户挑 N
-4. 写 N 份 draft 到 scripts/
+4. 写 N 份 draft 到 scripts/——**每份都走 Phase 4 的段落版格式 + Phase 4.5 自检**（line-format + humanizer），不因为批量就跳过
 
 详见 commit history（旧 cheat-seed 的 Phase 1-3）。这是 escape hatch，不是默认。
 
@@ -276,9 +276,30 @@ Mode A 默认深挖用户经历。但如果**用户讲的本身是时事话题**
 
 **字数**：按 `DRAFT_LENGTH` 派生（基于 `typical_duration_seconds`）。
 
-**段落版**：每段 100-300 字，**不要写一行一行的字幕格式**——那是剪映拍后自动断的。
+#### ⚠️ 正文必须是段落版，不是字幕格式（**最常见的生成跑偏**）
 
-格式：
+模型的训练先验会把"视频脚本"默认写成提词器/字幕的短行格式。**这是错的**——cheat-seed 的 draft 是给用户**改写**的散文稿，不是拍摄字幕。字幕是剪映拍后自动断的，不是写作时的形态。
+
+生成正文时，眼睛盯住下面这个对照：
+
+```
+❌ 字幕格式（不要这样写）：
+你有没有发现
+所有审稿人都在说一样的话
+你的研究太老套了
+但你仔细看
+他们引用的全是 5 年前的反应
+
+✅ 段落版（必须这样写）：
+你有没有发现，所有审稿人都在说一样的话——你的研究太老套了。但你仔细看，他们引用的全是 5 年前的反应。AI 不是新东西，新的是这次大家集体觉醒了。
+```
+
+规则：
+- **每段 100-300 字**，逗号 / 句号 / 破折号自然连，**不在句子边界硬断行**
+- 段与段之间空一行（自然的主题切换才换段）
+- 一份 draft 正文一般 3-6 段，**不该有几十个单句行**
+
+#### 格式：
 
 ```markdown
 # [立意标题]
@@ -303,22 +324,46 @@ Mode A 默认深挖用户经历。但如果**用户讲的本身是时事话题**
 
 ---
 
-[draft 正文，段落版]
+[draft 正文 —— **段落版**，3-6 段，每段 100-300 字，不是单句碎行]
 ```
 
 `WITH_DRAFT=no`（用户说"我自己写"）→ 跳过 Phase 4 + Phase 4.5。
 
-### Phase 4.5: humanizer 自检 pass（去 AI 味）
+### Phase 4.5: draft 自检 pass（版式 + 去 AI 味）
 
-`HUMANIZE_DRAFT=on`（默认）—— draft 写完落盘后，**在展示给用户前**用 `humanizer` skill 过一遍。Claude 自己写的初稿天然带 AI tells（em-dash 滥用 / rule of three / "inflated" 词汇 / 空泛归因 / -ing 浅层分析），这一步把它们清掉，让 draft 是个更干净的起点。
+draft 写完落盘后、**在展示给用户前**跑两步自检。**顺序固定：先 4.5a 修版式，再 4.5b 去 AI 味**——humanizer 处理散文，喂它字幕格式的碎行会乱。
 
-**为什么安全**（不污染校准）：cheat-seed 的 draft 不是被预测/发布的东西——用户改写后、cheat-predict 打分的是**用户最终稿**。humanize 初稿只是给用户更好的起点。
+**为什么安全**（不污染校准）：cheat-seed 的 draft 不是被预测/发布的东西——用户改写后、cheat-predict 打分的是**用户最终稿**。这两步只是给用户更干净的起点。
+
+#### Phase 4.5a: line-format 自检（字幕格式 → 段落版）
+
+Phase 4 的散文指令 + ❌/✅ 对照已经在生成时压先验，但生成仍可能跑偏。这一步是**确定性兜底**：
+
+```bash
+# 只看正文段（--- 分隔线之后）
+body=$(awk '/^---$/{f=1;next} f' scripts/<id>.md)
+line_count=$(printf '%s\n' "$body" | grep -c .)        # 非空行数
+char_count=$(printf '%s' "$body" | wc -m | tr -d ' ')
+avg_chars_per_line=$(( char_count / (line_count > 0 ? line_count : 1) ))
+```
+
+判定：**`avg_chars_per_line < 15` 且 `line_count >= 8`** → 判定为字幕格式 → **自动重排**：
+- 把句子边界的硬断行合并回自然段落
+- 按主题切换分 3-6 段，每段 100-300 字
+- 用 Edit 替换正文段（header 不动）
+- 在 Phase 5 输出里标一行："📐 检测到字幕格式，已重排为段落版"
+
+不命中 → 跳过，正文已经是段落版。
+
+#### Phase 4.5b: humanizer 去 AI 味
+
+`HUMANIZE_DRAFT=on`（默认）—— 用 `humanizer` skill 过一遍。Claude 自己写的初稿天然带 AI tells（em-dash 滥用 / rule of three / "inflated" 词汇 / 空泛归因 / -ing 浅层分析），这一步把它们清掉。
 
 步骤：
 
 1. 检查 `humanizer` skill 是否可用（`~/.claude/skills/humanizer/` 存在）：
-   - 不可用 → 跳过 Phase 4.5，在 Phase 5 输出里加一行"（humanizer 未装，draft 是原始 AI 版——`git clone https://github.com/blader/humanizer` 到 ~/.claude/skills/ 可启用自动去 AI 味）"
-2. 可用 → 通过 Skill tool 调 `humanizer`，**只传 draft 正文**（`---` 分隔线之后的部分），**绝不传 header**：
+   - 不可用 → 跳过 4.5b，在 Phase 5 输出里加一行"（humanizer 未装，draft 是原始 AI 版——`git clone https://github.com/blader/humanizer` 到 ~/.claude/skills/ 可启用自动去 AI 味）"
+2. 可用 → 通过 Skill tool 调 `humanizer`，**只传 draft 正文**（`---` 分隔线之后、4.5a 已重排好的段落版），**绝不传 header**：
    - header 的 `⚠️ Draft by Claude — 你必须改写后再拍` 警告是**有意的脚手架标记**，不是要 humanize 的散文
    - **voice calibration**：如果用户有历史脚本（`videos/*/script.md`）或填过 `script_patterns.md`，把最近 1-2 份作为 humanizer 的 voice 参考样本一起传——让它往"**这个用户的声音**"靠，而不是"通用人声"
 3. humanizer 返回去 AI 味的正文 → 用 Edit 替换 draft 文件的正文段（header 不动）
@@ -327,11 +372,13 @@ Mode A 默认深挖用户经历。但如果**用户讲的本身是时事话题**
 **纪律**：
 - humanizer 是**去 AI 味**，不是**替用户改写**。它让 draft 不那么像机器写的，但**仍不是用户的声音**——header 的"必须改写"警告依然成立，Phase 5 输出要重申
 - 如果 humanizer 把某句改得偏离了 `结构选型` / 用到的 pattern → 以 pattern 为准，那句回滚（pattern 是和用户讨论定的，humanizer 不该推翻）
+- humanizer **不负责版式**——断行问题在 4.5a 已经修完，humanizer 拿到的已是段落版
 
 ### Phase 5: 输出"下一步" + 询问继续
 
 ```
 ✅ Draft 写完：scripts/2026-05-04_<id>_<short>.md
+📐 版式自检：通过（段落版）  ← 或"检测到字幕格式，已重排为段落版"
 🧹 humanizer 过了一遍：修了 em-dash 滥用 ×3 / rule of three ×2 / inflated 词汇 2 处
    （draft 现在不那么"机器味"了——但这仍是脚手架，不是你的声音）
 
@@ -357,7 +404,8 @@ Mode A 默认深挖用户经历。但如果**用户讲的本身是时事话题**
 4. **深挖围绕用户给的话题**，不要切到别的——你说"开会被领导骂"，AI 不该问"那你最近有没有觉得 AI 让大家..."这种平行话题
 5. **写 draft 必须读 script_patterns.md**——按用户已有 pattern 选结构
 6. **draft 是脚手架**——header 加醒目警告"必须改写"
-7. **humanizer 只去 AI 味，不替用户改写**——Phase 4.5 让 draft 不那么机器味，但它仍不是用户的声音；"必须改写"的警告不因为过了 humanizer 就失效
+7. **humanizer 只去 AI 味，不替用户改写**——Phase 4.5b 让 draft 不那么机器味，但它仍不是用户的声音；"必须改写"的警告不因为过了 humanizer 就失效
+8. **正文是段落版不是字幕格式**——生成时盯 Phase 4 的 ❌/✅ 对照；Phase 4.5a 用 `avg_chars_per_line < 15 且行数 ≥ 8` 做确定性兜底，命中就重排。字幕是剪映拍后自动断的，不是写作时的形态
 
 ## Refusals
 
