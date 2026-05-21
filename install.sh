@@ -2,7 +2,7 @@
 #
 # cheat-on-content / install.sh
 #
-# Symlinks the 14 sub-skills into Claude Code and/or Codex skill directories so
+# Symlinks the 15 sub-skills into Claude Code and/or Codex skill directories so
 # agents can find them globally. Re-runnable safely (overwrite after confirmation).
 #
 # After install, in any content project directory: open Claude Code → say "初始化"
@@ -33,6 +33,7 @@ SUB_SKILLS=(
   cheat-shoot
   cheat-publish
   cheat-retro
+  cheat-persona
   cheat-bump
   cheat-recommend
   cheat-trends

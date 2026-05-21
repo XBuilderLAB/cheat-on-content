@@ -69,6 +69,7 @@ Batch Mode — 用户显式要批量（`/cheat-seed --batch 5`）：
 | `rubric_notes.md` | 读当前 rubric（粗打分用） |
 | `script_patterns.md` | 读已有 pattern（写 draft 时按 cheat sheet 选结构） |
 | `predictions/*.md`（如有） | 已发历史，brainstorm 时作为 context |
+| `audience.md`（如有） | 受众画像——选题 / 写稿时的"谁在看"镜子（由 `/cheat-persona` 派生） |
 
 ## Workflow
 
@@ -83,7 +84,11 @@ Batch Mode — 用户显式要批量（`/cheat-seed --batch 5`）：
 5. **读 `benchmark.md`**（如存在）作为 **context 来源 B**（对标账号）：
    - `state.benchmark_status = imported` → B 有内容，提取对标账号的样本主题分布、调性、Pattern
    - `state.benchmark_status = none / pending` → B 为空
-6. 检查用户的入参——是否含具体 topic / 经历，决定走 Mode A/B/C/Batch
+6. **读 `audience.md`**（如存在且非空骨架）作为 **受众镜子**：
+   - Confidence 🟡 以上（有真实复盘数据派生）→ 选题 / 写 draft 时作为"这个 persona 会在乎吗"的检验视角
+   - Confidence 🔴/🟠（空 / 仅 benchmark seed）→ 当弱参考，不当硬约束
+   - **不进粗打分**——audience.md 是 creative lens，粗打分仍只用 rubric。persona 影响"写什么 / 哪个角度"，不影响分数
+7. 检查用户的入参——是否含具体 topic / 经历，决定走 Mode A/B/C/Batch
 
 **brainstorm 时的 context 优先级**（**Claude 判断**——下面是参考默认）：
 

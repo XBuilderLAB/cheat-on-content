@@ -2,7 +2,7 @@
 #
 # cheat-on-content / uninstall.sh
 #
-# Removes the 14 cheat-on-content skills from Claude Code and/or Codex skill dirs.
+# Removes the 15 cheat-on-content skills from Claude Code and/or Codex skill dirs.
 #
 # Does NOT touch any content project's data (.cheat-state.json, predictions/,
 # rubric_notes.md, candidates.md, etc.) — those live in your content directories
@@ -27,6 +27,7 @@ SUB_SKILLS=(
   cheat-shoot
   cheat-publish
   cheat-retro
+  cheat-persona
   cheat-bump
   cheat-recommend
   cheat-trends

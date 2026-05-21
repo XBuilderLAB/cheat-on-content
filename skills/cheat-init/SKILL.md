@@ -364,6 +364,19 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
    - 复制 `cheat-on-content/templates/benchmark.template.md` → `<user-repo>/benchmark.md`
    - **Phase 2.5 选 c 不创建** → benchmark.md 不存在，state 标 `benchmark_status: none`
 
+4.7. **`audience.md`**
+   ```
+   "正在创建 audience.md — 你账号的受众画像（'谁在看'）。
+    
+    现在是空骨架。它和 rubric_notes.md 平行——rubric 教 Claude 怎么打分，
+    audience 告诉 Claude 你的观众是谁。跑够几篇复盘后跑 /cheat-persona，
+    它会从评论数据聚类出真实画像，cheat-seed 选题写稿时就有了一面镜子。
+    
+    注意：audience.md 由评论派生 → 含实绩信号 → blind 打分 sub-agent 硬禁读它。"
+   ```
+   - 复制 `cheat-on-content/templates/audience.template.md` → `<user-repo>/audience.md`
+   - 如 Phase 2.5 选了 a/b（有 benchmark）→ Phase 5 清单里提示"可跑 `/cheat-persona — seed-from-benchmark` 先 seed 一份未验证画像"
+
 5. **`WORKFLOW.md`** + **`STATUS.md`**
    - 复制 templates/ 对应文件
 

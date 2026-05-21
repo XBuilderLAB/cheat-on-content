@@ -8,6 +8,30 @@ All notable changes to cheat-on-content will be documented here.
 
 ## [Unreleased]
 
+### Added — 受众画像 persona（cheat-persona skill + audience.md）
+
+**动机**：用户选题 / 写稿时缺一个清晰的"谁在看"的镜子。新增受众画像功能——从复盘评论数据聚类出账号真实受众。
+
+**设计**：persona 是和 rubric **平行**的第二个派生物：
+
+```
+复盘数据（评论 + 完播 + 转粉）
+   ├──→ rubric 进化（cheat-bump）   —— "怎么打分"
+   └──→ 受众画像（cheat-persona）    —— "谁在看"
+```
+
+- **新 skill `/cheat-persona`**（第 15 个子 skill）—— 扫 `predictions/*.md` 复盘段评论，按"自我认同 / 情绪寄存 / 反驳点 / 语言"四维聚类，写 `audience.md`
+- **新文件 `audience.md`** + `templates/audience.template.md` —— 受众画像 reference，和 `benchmark.md` 同级。强制每条"验证特征"带评论证据 + 条数；验证 / 假设 / 反画像三分；强制写"反画像"防 persona 变成讨好自己的虚构
+- **⚠️ 污染隔离**：`audience.md` 从评论派生 = 含实绩信号。`cheat-score-blind` hard refusal list 加 `audience.md`，refusal_code `blocked_audience`。persona 影响 cheat-seed **写什么**（creative），不影响 cheat-predict **怎么打分**（blind sub-agent 永不读 audience.md）
+- **cheat-seed 接线**：Phase 0 读 audience.md 作为"这个 persona 会在乎吗"的镜子（Confidence 🟡 以上才当检验视角；不进粗打分）
+- **cheat-init 接线**：Phase 3 脚手架创建空 `audience.md`；导了 benchmark 的用户提示可 `/cheat-persona — seed-from-benchmark`
+- **Confidence 分级**：🔴 无数据 / 🟠 benchmark-seed 未验证 / 🟡 1-2 篇复盘 / 🟢 3-5 篇 / 🔵 6+
+- **零 schema 变化**：persona 元数据全放 audience.md header（version / last_rebuilt / 数据基础 / Confidence），不动 `.cheat-state.json`
+
+**Phase 1 范围**（本次）：上述。**Phase 2 路线**（未做）：cheat-recommend persona-fit 排序 / cheat-status 新鲜度 nag / cheat-retro 自动 flag。
+
+**Known limitations**（写进 cheat-persona/SKILL.md）：评论 ≠ 全部受众（偏向会评论的活跃少数）；评论可被水军污染；persona 滞后于真实受众变化；不替用户做"想要的受众 vs 实际受众"的战略决策。
+
 ### Fixed — cheat-seed draft 写成字幕格式（一句一行）
 
 **问题**：用户反馈 cheat-seed 写的 draft 正文是"一句话一行"的字幕格式，而不是段落版。根因不是文档缺失——"不要字幕格式"的指令在 4 个文件里都有，但**全是散文指令**。生成 draft 那一刻，模型"video script = 提词器短行"的训练先验压过了埋在 Phase 4 散文里的一句话。
