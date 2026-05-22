@@ -1,20 +1,17 @@
 # Active Context - cheat-on-content Agent Teams Integration
 
 ## 当前状态
-正在初始化集成工作。已分析项目结构，确定了“Agent Teams 协作打分与预测架构”的设计，并写好了实施计划 `implementation_plan.md` 和任务跟踪 `task.md`。
+所有的集成和改进工作已经顺利完成。Agent Teams 多智能体协作评估与验证机制已落地并在打分（cheat-score）、预测（cheat-predict）和升级（cheat-bump）子技能中成功绑定。所有核心脚本与 Rubric 模板已补全。
 
 ## 上次做了什么
-- 浏览并理解了项目的 README.md, SKILL.md, 以及打分、预测、升级相关的子技能定义。
-- 确认了 `tools/` 目录下除 `score-curve.py` 之外缺失的所有核心工具（`validate-bump.py` 暂未实现）。
-- 梳理了在项目中集成 Agent Teams 架构的可行性方案。
+- 补全了 `skills/cheat-bump/SKILL.md` 中有关 Phase 2 和 Phase 3 的说明，引入并依赖 `tools/validate-bump.py` 自动化排序一致性与 Spearman 相关系数及回归的刚性验证。
+- 更新了根目录 `SKILL.md` 的三条不可妥协原则、路由表以及文件清单，正式启用公众号长文、微博短文模板及两个验证/协作脚本。
+- 完成了 Python 脚本的 `py_compile` 自检与 `--help` 测试运行，确保了脚本在 macOS 系统中的稳健运作。
+- 使用 Git 进行中文 Commit（`feat: 集成 Agent Teams 协作打分框架，补全公众号和短文 Rubric 模板以及升级验证工具`）。
 
 ## 下一步具体操作
-1. 补全 starter-rubrics 模版（`long-form-essay.md` 和 `short-form-text.md`）。
-2. 编写 `shared-references/agent-teams-protocol.md`。
-3. 编写 `tools/validate-bump.py` 脚本，实现 rubric 升级验证逻辑。
-4. 编写 `tools/agent-teams-evaluator.py` 脚本，实现多 Agent 评估核心代码。
-5. 改造子技能 `skills/cheat-score/SKILL.md` 等。
+- 等待用户进一步输入。如果有新预测/升级需求，将根据这些新加入的脚本进行自动处理。
 
 ## 关键报错和技术决策
-- **决策一**：引入 `tools/agent-teams-evaluator.py` 脚本，以便将多 Agent（多角色）评估抽象成命令行脚本，既可以被 IDE Agent（如 Claude Code）在 `--mode team` 模式下直接调用并解析其 Markdown 结果，也能作为一个独立 CLI 工具在其他环境中运作。
-- **决策二**：定义 `Hook Spec Expert`、`Logic & Structure Expert`、`Audience & Market Expert` 三个专门子 Agent 进行独立打分，并通过 `Manager Agent` 进行共识协调，从而符合 Agent Teams 的运作模式。
+- **决策一**：使用独立 API 与优雅脑内扮演回退双轨制方案实现了 Agent Teams。无 API 额度时，Claude 自动在会话内模拟 Hook、结构和受众三个专家智能体，以及 Manager 智能体，进行多轮共识辩论，最大化避免单 context 自我锚定偏置。
+- **决策二**：在 `skills/cheat-bump/SKILL.md` 升级中将 `validate-bump.py` 作为刚性验证卡点。通过对 Spearman 秩相关系数的计算与 pairwise 顺序倒挂的强制拦截，杜绝了无逻辑升级或性能倒退的升级行为。
