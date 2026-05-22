@@ -1,24 +1,29 @@
 ---
 name: cheat-score
 description: 给单篇稿子打 rubric 分。**只在控制台输出，不写文件，不预测**。触发词："打分这篇 [path]"/"score this [path]"/"给这稿子打分"/"先打分看看"。是 cheat-predict 之前的轻量探索动作。
-argument-hint: <draft-path>
-allowed-tools: Read, Glob, Grep
+argument-hint: <draft-path> [— mode: single|team]
+allowed-tools: Read, Glob, Grep, Bash(*)
 ---
 
 # /cheat-score — 单稿打分
 
-打分但**不预测**。用户用它快速看稿子的 composite，决定是否值得进入正式预测流程。
+打分但**不预测**。用户用它快速看稿子的 composite，决定是否值得进入正式预测流程。支持单 Agent 快速打分与 Agent Teams 多智能体协作评估。
 
 ## Overview
 
 ```
-[用户：打分这篇 draft.md]
+[用户：打分这篇 draft.md — mode: team]
   ↓
 [读 draft.md + rubric_notes.md]
   ↓
-[逐维度打 0-5 + 写一行理由 + 算 composite]
+[模式判定: single 模式还是 team 模式?]
   ↓
-[控制台输出：评分 + composite + 推荐下一步]
+  ├─ single  →  [Claude 单体快速逐维度打分]
+  └─ team    →  [检测 API 秘钥与环境]
+                  ├─ 有 API  →  [运行 tools/agent-teams-evaluator.py 自动合意打分]
+                  └─ 无 API  →  [Claude 脑内模拟 HS/LS/AM/Manager 专家会商与共识博弈]
+  ↓
+[计算并渲染 composite 分数矩阵表]
   ↓
 [结束 — 不写任何文件]
 ```
@@ -26,9 +31,10 @@ allowed-tools: Read, Glob, Grep
 ## Constants
 
 - **RUBRIC_PATH = rubric_notes.md** — 当前 rubric 来源
-- **OUTPUT_DETAIL = full** — full: 含每维度理由；compact: 仅分数表
+- **OUTPUT_DETAIL = full** — full: 含每维度理由及专家博弈分；compact: 仅分数表
+- **DEFAULT_MODE = team** — 默认启用多智能体团队打分
 
-> 💡 调用时覆盖：`/cheat-score draft.md — OUTPUT_DETAIL: compact`
+> 💡 调用时覆盖：`/cheat-score draft.md — mode: single`
 
 ## Inputs
 
@@ -50,28 +56,36 @@ allowed-tools: Read, Glob, Grep
 
 从 `rubric_notes.md` 解析出：
 - 当前 rubric_version
-- 维度列表与权重（如 `ER×1.5 + SR×1.5 + HP×1.5 + QL + NA + AB + SAT`）
-- 归一化常数（如 `/ 8.5 × 2.0`）
-- 每个维度的 0-5 含义（从"当前评分维度"段表格读）
+- 维度列表与权重
+- 归一化常数
+- 每个维度的 0-5 含义
 
-如果 `rubric_notes.md` 格式与预期不符（用户手改过结构）→ 询问用户当前公式是哪一行，**不要自己猜**。
+如果 `rubric_notes.md` 格式与预期不符 → 询问用户当前公式是哪一行。
 
-### Step 3：**Claude 自己**逐维度打分
+### Step 3：打分流程 (单 Agent / Agent Teams)
 
-**Claude 主动打分**——不让用户来打。这是工具的核心价值（"作弊器"——AI 帮你判断，不是 AI 当你的格式化器）。
+根据参数 `— mode` 决定打分模式（默认 `team`）：
 
-对每个维度：
-1. 读维度定义 + 0-5 含义
-2. 在脑里 anchor 到 0/3/5 的样本对照
-3. 选择一个 **整数**（0/1/2/3/4/5——不允许 4.5 之类）
-4. 写一行理由（≤ 30 字，引用稿子里的具体词或场景）
+#### 选项 A：single 模式（单体快速打分）
+由 **Claude 单体** 快速打分。对每个维度：
+1. 读维度定义 + 0-5 含义，在脑里 anchor 到 0/3/5 样本对照。
+2. 给出首个直觉 **整数**，并写一行理由（≤30 字，引用稿件具体文案）。
 
-**打分速度纪律**（参考 starter-rubrics/opinion-video.md 的 cheat sheet）：
-- 每个维度 ≤ 30 秒思考时间。超过就是在合理化，不是在打分
-- **相信第一个整数**
-- **不查锚点**——先盲打，再对比锚点（避免被锚定）
+#### 选项 B：team 模式（Agent Teams 协作打分）
+1. **API 自动模式**：检查环境或 `.env` 是否有 `GEMINI_API_KEY` 或 `OPENAI_API_KEY`。
+   - 若有，运行 `python tools/agent-teams-evaluator.py --draft <draft-path>`。
+   - 读取并输出其打印的专家评分矩阵、冲突解决过程以及最终 consensus 分数。
+2. **内生模拟模式**：若无 API，由 Claude（我们）在当前会话中扮演 Manager 并分流出三个虚拟子 Agent 进行**合意共识打分**（遵循 `shared-references/agent-teams-protocol.md`）：
+   - **HS-Agent** (Hook & Emotion) 评估 `HP` / `ER`。
+   - **LS-Agent** (Logic & Structure) 评估 `QL` / `NA` / `SAT` / `LE`。
+   - **AM-Agent** (Audience & Market) 评估 `AB` / `SR` / `TS`。
+   - 每个维度由主审和备审专家独立打分。若两人估分差值 ≥ 2，在 CoT 脑内进行两轮自辩讨论（陈述事实 -> 交叉驳斥与让步），最终由 Manager 裁决。
+   - 输出中明确呈现每维度的“主审分/备审分”以及冲突辩论过程，最后归一计算。
 
-输出后用户可以挑刺（"AB 给 3 不是 4"），Claude 改值并重新展示。
+打分速度纪律（限 single 模式）：
+- 每个维度 ≤ 30 秒思考时间。相信第一个整数，不提前查实绩锚点。
+
+输出后用户可以挑刺，Claude 连锁修改并重新展示。
 
 ### Step 4：算 composite + 输出
 

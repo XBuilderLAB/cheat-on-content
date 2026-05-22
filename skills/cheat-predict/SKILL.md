@@ -128,14 +128,20 @@ Confidence 派生表见 [shared-references/state-management.md](../../shared-ref
 6. 询问用户："这是你打算实际拍摄发布的最终稿吗？还是会再改？"——必须是最终稿
 7. 如果稿子字数与 `typical_duration_seconds` 派生范围严重不符（差 >50%）→ 提示用户："这条稿子 N 字，按你设的典型时长（X 分钟）应该是 M-K 字。是临时改了时长，还是稿子需要砍/补？"
 
-### Phase 2: Claude 自己打 7 维分 + 算 composite
+### Phase 2: 打分与计算 (单 Agent / Agent Teams)
 
-**Claude 主动打分**，不让用户来打。每个维度给 0-5 整数分 + 一行理由（≤30 字，引用稿子里的具体词或场景）。
+根据参数 `— mode` 决定打分模式（默认 `team`）：
 
-按当前公式算 composite。所有阶段都算（v0 公式是等权 7 维 / 7 × 2.0，仍能算出数字，只是 confidence 标"🔴 极低"提醒读者别太信）。
+#### 选项 A：single 模式（单体快速打分）
+由 **Claude 单体** 快速打分。每个维度给 0-5 整数分 + 一行理由（≤30 字，引用稿件具体细节）。
 
-**这一步先在内存里做，不输出**——等 Phase 5 全部完成后一次性展示给用户 review。
-（不要每个 phase 都让用户确认——那是把工具变成 5 段交互式问答，烦。一次性展示才是 review。）
+#### 选项 B：team 模式（Agent Teams 协作打分）
+- **API 模式**：调用并运行 `python tools/agent-teams-evaluator.py --draft <script-path> --mode team`。解析脚本输出结果拿到各专家分数、冲突辩论过程及最终 composite。
+- **内生模拟模式**：由 Claude 在会话中扮演 Manager 派生出 3 个虚拟专家子 Agent 进行打分，发生分歧（分差 ≥ 2）时模拟两轮自辩讨论（详见 `shared-references/agent-teams-protocol.md`），生成最终得分。
+
+按公式算出 composite。并在预测落盘文件的 header 的 `Scored By` 字段中记录为 `agent-team`（若有用户覆盖则记录为 `agent-team+user_override`）。
+
+这一步先在内存里做，不输出——等 Phase 5.5 review 时一次性展示给用户。
 
 ### Phase 3: 锚点对比
 

@@ -120,42 +120,28 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Skill, mcp__llm-chat__cha
 
 如果用户的提议含糊（如"ER 权重提一点"）→ 询问具体数值，**禁止自己猜**。
 
-### Phase 2: 校准池全量重打分
+### Phase 2: 校准池全量重打分与回追打分
 
-Glob `predictions/*.md` 中所有有完整复盘段的文件 → 校准池。
-
-对每篇：
-1. 读各维度分数（从输入快照段）
-2. 用新公式重算 composite
-3. 如果新公式增加了维度（如 MS / TS）→ **回追打分**：读稿子全文（或复盘段的关键证据）→ 给 MS / TS 打 0-5
-4. 写一份"重打表"到内存（或临时文件 `.cheat-cache/bump-rescores.json`）
-
-**回追打分的诚实要求**：你已经看过实绩数据了，回追打 MS / TS 时**会被实绩污染**——这是不可避免的。在重打表里**明确标注** `score_post_hoc: true`。
+1. 检查新公式是否引入了先前样本中未曾出现的新维度。
+   - 如果新公式引入了新维度，你必须在执行校验前确定这些新维度的分值（回追打分）。因为已经知晓实绩，此时打分可能存在偏置（会被实绩污染），但仍需尽量客观地根据稿子内容或复盘记录打分，并在重打表里明确标注 `score_post_hoc: true`。
+   - 回追打分可以通过 `validate-bump.py` 的 `--backfill` 参数提供。例如 `--backfill "MS=3,TS=2"`。
+2. 你应该通过运行命令行脚本 `python tools/validate-bump.py` 来自动化执行重算分与一致性检验。
 
 ### Phase 3: 计算排序一致性
 
-```
-每个样本：
-  new_composite_rank: 用新公式排序的 rank
-  actual_plays_rank: 用实际播放排序的 rank
-  delta: |new_rank - actual_rank|
-
-输出对照表：
-| 样本 | composite (v2) | composite (v2.1) | rank (new) | actual | rank (actual) | delta |
-|---|---|---|---|---|---|---|
-| 仓鼠 | 9.41 | 9.55 | 1 | 124.8w | 1 | 0 |
-| 停止期待 | 8.24 | 9.11 | 2 | 71.1w | 2 | 0 |
-| 老板废话 | 7.65 | 8.11 | 4 | 39.6w | 3 | 1 |
-| 求职悖论 | 8.47 | 7.56 | 5 | 16.8w | 4 | 1 |
-| 谁问你了 | 8.24 | 7.00 | 6 | 11.7w | 5 | 1 |
-
-排序一致性：4/5 在 |delta| ≤ 1
-Pairwise no-regression：旧公式做对的所有 pair 在新公式下未颠倒 ✓
-```
-
-判定：
-- 排序一致性 < THRESHOLD（默认 0.8） → **本地拒绝**，转 Phase 4 之前明确报告失败
-- pairwise 出现回归 → **本地拒绝**
+使用 `tools/validate-bump.py` 进行刚性验证：
+1. 运行校验命令：
+   ```bash
+   python tools/validate-bump.py --propose "新公式" [--backfill "dim1=val1,dim2=val2"]
+   ```
+2. 运行后，工具将输出：
+   - 包含旧分、新分、新 Rank、实际播放数、实际 Rank 和偏差（delta）的对比表格。
+   - 旧公式和新公式的 Spearman 秩相关系数。
+   - 新公式排序一致性比例 (|delta| <= 1) 是否达到 `THRESHOLD = 0.8`。
+   - 是否存在 Pairwise 倒挂回归对数（新公式颠倒了旧公式本来判断正确的相对顺序）。
+3. 判定：
+   - 若脚本运行失败（返回退出码非0，表明排序一致性未达标，或存在 Pairwise 倒挂回归，或参数缺少回追维度值）：**本地拒绝**。必须直接向用户报告失败并终止流程。
+   - 若脚本运行成功（返回退出码 0）：**通过本地验证**。将工具输出的表格和指标完整呈现在输出中，并继续 Phase 4。
 
 `THRESHOLD` 写死在协议里——不允许临时调低（那本身是另一个需要 bump 的元决策）。
 

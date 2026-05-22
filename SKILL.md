@@ -1,8 +1,8 @@
 ---
 name: cheat-on-content
-description: 给所有想把"感觉"变成可校准预测的内容创作者。**方法论通用**——打分 → 盲预测 → T+3d 复盘 → 进化 rubric 的循环适用任何能被量化（播放 / 阅读 / 收听 / 点击）的内容。**rubric 是循环的内容，不是循环本身**——当前内置一份观点视频 rubric（参考博主 25+ 视频拟合），其他形态可借这套起步并 bump 调权重。**强烈建议导入对标账号**作为初始信号源（/cheat-learn-from）。触发词："初始化"/"打分这篇"/"启动预测"/"已发布"/"复盘"/"升级 rubric"/"推荐选题"/"抓热点"/"状态"/"找对标"/"learn from"。**首次使用必须先跑 /cheat-init。**
-argument-hint: [draft-path] [— mode: cold-start|calibration]
-allowed-tools: Bash(*), Read, Write, Edit, Grep, Glob, Skill, mcp__llm-chat__chat
+description: 给所有想把"感觉"变成可校准预测的内容创作者。**方法论通用**——打分 → 盲预测 → T+3d 复盘 → 进化 rubric 的循环适用任何能被量化（播放 / 阅读 / 收听 / 点击）的内容。支持 **Agent Teams 多智能体协作评估与验证机制**，利用多个领域专家智能体进行共识博弈评估。**rubric 是循环的内容，不是循环本身**——当前内置多形态先验 rubric，其他形态可借这套起步并 bump 调权重。触发词："初始化"/"打分这篇"/"启动预测"/"已发布"/"复盘"/"升级 rubric"/"更新公式"/"我想加一个维度"/"调整权重"/"重校桶"/"recalibrate bucket"。**首次使用必须先跑 /cheat-init。**
+argument-hint: [draft-path] [— mode: cold-start|calibration] [--mode single|team]
+allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Skill, mcp__llm-chat__chat
 ---
 
 # 网红作弊器 / Cheat on Content
@@ -40,7 +40,7 @@ Codex 没有 Claude Code 的 slash-command harness。安装到 Codex 后，按�
 
 1. **盲预测（Blind prediction）**：预测必须在看到任何实际数据**之前**写完。一旦写完，`## 预测` 段是 immutable——只能往 `## 复盘` 段追加。完整规范：[shared-references/blind-prediction-protocol.md](shared-references/blind-prediction-protocol.md)。**hooks/prediction-immutability.sh 在 harness 层强制执行**。
 
-2. **升级 = 全量重打（Bump = full re-score）**：rubric 升级时，校准池所有有实绩数据的样本必须用新公式重打分；新排序与实际表现排序若在 ≥4/5 样本上不一致，升级被拒；升级必须经跨模型独立审核。完整规范：[shared-references/bump-validation-protocol.md](shared-references/bump-validation-protocol.md)。
+2. **升级 = 全量重打（Bump = full re-score）**：rubric 升级时，校准池所有有实绩数据的样本必须用新公式重打分（可使用 `tools/validate-bump.py` 工具进行 Spearman 秩相关系数与回归校验）；新排序与实际表现排序若在 ≥4/5 样本上不一致，升级被拒；升级必须经跨模型独立审核。完整规范：[shared-references/bump-validation-protocol.md](shared-references/bump-validation-protocol.md)。
 
 3. **rubric 是工作台，不是博物馆**：被新数据推翻或被吸收为正式维度的观察，**删掉**。绝不留"我曾经以为 X，但其实..."的考古层。git history 才是档案。完整规范：[shared-references/observation-lifecycle.md](shared-references/observation-lifecycle.md)。
 
@@ -53,8 +53,8 @@ Codex 没有 Claude Code 的 slash-command harness。安装到 Codex 后，按�
 | "初始化" / "init" / "首次使用" | `/cheat-init` | 无（这是入口） |
 | "找对标" / "学这个账号" / "拆这几个对标视频" / "learn from" / "导入对标账号" | `/cheat-learn-from` | 已 init；cold-start 强烈建议；后续可随时 --append / --replace |
 | "找选题" / "我不知道拍什么" / "seed" / "找前 5 个选题" | `/cheat-seed` | 已 init（cold-start 用户专用一次性种子动作） |
-| "打分这篇 [path]" / "score this [path]" | `/cheat-score` | rubric_notes.md 存在 |
-| "启动预测" / "start prediction" / "给这稿子打分并预测" | `/cheat-predict` | 已 init + 有最终稿 |
+| "打分这篇 [path]" / "score this [path]" / "team打分" | `/cheat-score [--mode team\|single]` | rubric_notes.md 存在 |
+| "启动预测" / "start prediction" / "给这稿子打分并预测" | `/cheat-predict [--mode team\|single]` | 已 init + 有最终稿 |
 | "拍了 X" / "shot it" / "录完了" | `/cheat-shoot` | 对应预测已写（buffer +1） |
 | "已发布" / "I shipped it" / "发布链接是 X" | `/cheat-publish` | 对应预测文件存在（buffer -1） |
 | "复盘" / "retro this" / "T+3d 数据来了" | `/cheat-retro` | 对应预测文件存在 + 已过 RETRO_WINDOW_DAYS |
@@ -159,8 +159,8 @@ cheat-on-content/
 ├── starter-rubrics/                   # 各内容形态的先验 rubric
 │   ├── opinion-video.md               # ✅ 观点视频（中文，已校准 25+ 样本）
 │   ├── opinion-video-zero.md          # ✅ v0 等权占位（cold-start）
-│   ├── long-form-essay.md             # ⬜ 公众号 / Substack
-│   └── short-form-text.md             # ⬜ X thread / 微博长文
+│   ├── long-form-essay.md             # ✅ 公众号 / Substack
+│   └── short-form-text.md             # ✅ X thread / 微博长文
 ├── templates/                         # skill 写进用户 repo 的文件骨架
 │   ├── rubric_notes.template.md       # ✅
 │   ├── prediction.template.md         # ✅ 统一版（所有阶段，含 confidence header）
@@ -182,7 +182,8 @@ cheat-on-content/
 ├── tools/                             # 独立 CLI 脚本
 │   ├── score-curve.py                 # ⬜ 预测精度收敛曲线
 │   ├── md-to-sqlite.py                # ⬜ markdown → content.db 升级（批次 3）
-│   └── validate-bump.py               # ⬜ 校准池全量重打（批次 3）
+│   ├── validate-bump.py               # ✅ 校准池全量重打（批次 3）
+│   └── agent-teams-evaluator.py       # ✅ 多 Agent 协作打分评估引擎
 ├── adapters/                          # 数据源适配
 │   ├── perf-data/                     # 复盘数据源（含 douyin-session）
 │   ├── candidate-pool/                # 候选池数据源
