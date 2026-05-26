@@ -52,7 +52,9 @@ Codex 没有 Claude Code 的 slash-command harness。安装到 Codex 后，按�
 |---|---|---|
 | "初始化" / "init" / "首次使用" | `/cheat-init` | 无（这是入口） |
 | "找对标" / "学这个账号" / "拆这几个对标视频" / "learn from" / "导入对标账号" | `/cheat-learn-from` | 已 init；cold-start 强烈建议；后续可随时 --append / --replace |
+| "全自动学习" / "一键学账号" / "learn from v2" | `/cheat-learn-from-v2` | 已 init；全自动音视频拉取、 Whisper ASR 转录及风格指纹生成 |
 | "找选题" / "我不知道拍什么" / "seed" / "找前 5 个选题" | `/cheat-seed` | 已 init（cold-start 用户专用一次性种子动作） |
+| "风格约束写稿" / "指纹写稿" / "seed v2" | `/cheat-seed-v2` | 已 init；自动加载风格指纹并翻译为 Prompt 刚性格式化限制 |
 | "打分这篇 [path]" / "score this [path]" / "team打分" | `/cheat-score [--mode team\|single]` | rubric_notes.md 存在 |
 | "启动预测" / "start prediction" / "给这稿子打分并预测" | `/cheat-predict [--mode team\|single]` | 已 init + 有最终稿 |
 | "拍了 X" / "shot it" / "录完了" | `/cheat-shoot` | 对应预测已写（buffer +1） |
@@ -133,7 +135,9 @@ cheat-on-content/
 ├── skills/                            # 子 skill 集
 │   ├── cheat-init/SKILL.md            # ✅ 入口：onboarding 与脚手架
 │   ├── cheat-learn-from/SKILL.md      # ✅ 对标账号导入（拆 pattern + 派生 base rubric 信号）
+│   ├── cheat-learn-from-v2/SKILL.md   # ✅ 一键全自动音视频拉取、 ASR 转录及风格打分学习
 │   ├── cheat-seed/SKILL.md            # ✅ Cold-start 选题启动器（brainstorm + 可选 draft）
+│   ├── cheat-seed-v2/SKILL.md         # ✅ 风格指纹翻译 Prompt 刚性写稿约束器
 │   ├── cheat-score/SKILL.md           # ✅ 单稿打分（不写文件）
 │   ├── cheat-predict/SKILL.md         # ✅ 盲预测 + immutable 日志
 │   ├── cheat-shoot/SKILL.md           # ✅ 登记拍摄（buffer +1）
@@ -182,7 +186,13 @@ cheat-on-content/
 ├── tools/                             # 独立 CLI 脚本
 │   ├── score-curve.py                 # ⬜ 预测精度收敛曲线
 │   ├── md-to-sqlite.py                # ⬜ markdown → content.db 升级（批次 3）
-│   ├── validate-bump.py               # ✅ 校准池全量重打（批次 3）
+│   ├── validate-bump.py               # ✅ 校准池全量重打
+│   ├── validate-bump-v2.py            # ✅ 升级公式校验器 (代理)
+│   ├── 评估公式升级校验器_v2.0.py        # ✅ 混合标定与冷启动弱化拦截校验引擎
+│   ├── style-extractor.py             # ✅ 风格指纹提取器 (代理)
+│   ├── 文案风格指纹提取器_v1.0.py        # ✅ 句长标点词频风格量化分析工具
+│   ├── douyin-fetcher.py              # ✅ 抖音无水印抓取器 (代理)
+│   ├── 抖音视频解析器_v1.0.py            # ✅ 抖音视频与主页列表解析、音频下载与转录联动程序
 │   └── agent-teams-evaluator.py       # ✅ 多 Agent 协作打分评估引擎
 ├── adapters/                          # 数据源适配
 │   ├── perf-data/                     # 复盘数据源（含 douyin-session）
