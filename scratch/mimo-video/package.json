@@ -1,0 +1,11 @@
+{
+  "name": "mimo-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.6.46 preview",
+    "check": "npx --yes hyperframes@0.6.46 lint && npx --yes hyperframes@0.6.46 validate && npx --yes hyperframes@0.6.46 inspect",
+    "render": "npx --yes hyperframes@0.6.46 render",
+    "publish": "npx --yes hyperframes@0.6.46 publish"
+  }
+}

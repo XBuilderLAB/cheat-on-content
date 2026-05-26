@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="zh" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <title>小米 MiMo 降价 99%！</title>
+    <!-- 引入谷歌字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&family=Noto+Sans+SC:wght@500;700;900&display=swap" rel="stylesheet">
+    <!-- 引入 GSAP -->
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1080px;
+        height: 1920px;
+        overflow: hidden;
+        background: #060913;
+        font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+        color: #fff;
+      }
+
+      /* 科技感背景网格 */
+      .bg-grid {
+        position: absolute;
+        inset: 0;
+        background-size: 80px 80px;
+        background-image: 
+          linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+        z-index: 1;
+      }
+
+      /* 光晕效果 */
+      .bg-glow-1 {
+        position: absolute;
+        top: 20%;
+        left: 10%;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(255, 103, 0, 0.08) 0%, transparent 70%);
+        z-index: 2;
+        filter: blur(80px);
+      }
+      .bg-glow-2 {
+        position: absolute;
+        bottom: 20%;
+        right: 10%;
+        width: 700px;
+        height: 700px;
+        background: radial-gradient(circle, rgba(59, 130, 246, 0.06) 0%, transparent 70%);
+        z-index: 2;
+        filter: blur(80px);
+      }
+    </style>
+  
+    <script>
+    window.__tailwindReady=new Promise(function(resolve){
+    var loaded=document.readyState==="complete";
+    var resolved=false;
+    var observer;
+    function readTailwindCss(){var styles=document.querySelectorAll("style");for(var i=styles.length-1;i>=0;i--){var text=styles[i].textContent||"";if(text.indexOf("tailwindcss v")!==-1)return text;}return "";}
+    function finish(){if(resolved||!loaded||!readTailwindCss())return;resolved=true;if(observer)observer.disconnect();resolve(true);}
+    observer=new MutationObserver(finish);
+    observer.observe(document.documentElement,{childList:true,subtree:true,characterData:true});
+    if(loaded){finish();}else{window.addEventListener("load",function(){loaded=true;finish();},{once:true});}
+    });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js" integrity="sha384-v5YF9xS+gLRWdvrQ0u/WRbCkjSIH0NjHIPe8tBL1ZRrmI7PiSH6LLdzs0aAIMCuh" crossorigin="anonymous"></script>
+  </head>
+  <body>
+    <!-- 背景层 -->
+    <div class="bg-grid"></div>
+    <div class="bg-glow-1"></div>
+    <div class="bg-glow-2"></div>
+
+    <!-- 渲染容器 -->
+    <div
+      id="root"
+      class="relative w-full h-full flex flex-col justify-between p-16 z-10"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="12"
+      data-width="1080"
+      data-height="1920"
+    >
+      <!-- 头部：博主水印 -->
+      <div class="flex items-center gap-4 border-b border-white/5 pb-8">
+        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-orange-500/20">
+          Tz
+        </div>
+        <div class="flex flex-col">
+          <span class="text-white font-bold text-2xl tracking-wider">柱子哥TzFilm</span>
+          <span class="text-white/40 text-sm tracking-widest uppercase">AI Trend 解密</span>
+        </div>
+      </div>
+
+      <!-- 中间：核心文案场景（通过 GSAP 进行显示隐藏控制） -->
+      <div class="flex-1 flex items-center justify-center relative px-4">
+        
+        <!-- 场景 1：大降价 Hook -->
+        <div id="scene-1" class="absolute w-full flex flex-col items-center text-center opacity-0 scale-90">
+          <span class="text-orange-500 font-extrabold text-4xl tracking-widest mb-6 uppercase border border-orange-500/20 px-6 py-2 rounded-full bg-orange-500/5">
+            XIAOMI MIMO v2.5
+          </span>
+          <h1 class="text-white font-black text-7xl leading-tight mb-8">
+            大模型推理价格<br>
+            <span class="bg-gradient-to-r from-yellow-400 to-amber-500 bg-clip-text text-transparent text-8xl">
+              直接砍掉 99%！
+            </span>
+          </h1>
+          <p class="text-white/60 text-3xl font-medium max-w-[800px] leading-relaxed">
+            未命中缓存每百万 Token <span class="text-yellow-400 font-bold">只要 3 元</span>！<br>
+            命中缓存甚至低至 <span class="text-yellow-400 font-bold">2.5 分钱</span>！
+          </p>
+        </div>
+
+        <!-- 场景 2：基于 SGLang HiCache 的 SWA 优化类比 -->
+        <div id="scene-2" class="absolute w-full flex flex-col items-center text-center opacity-0 scale-90">
+          <span class="text-blue-400 font-extrabold text-4xl tracking-widest mb-6 uppercase border border-blue-400/20 px-6 py-2 rounded-full bg-blue-400/5">
+            KV CACHE 架构优化
+          </span>
+          <h1 class="text-white font-black text-7xl leading-tight mb-8">
+            数据搬运<br>
+            <span class="bg-gradient-to-r from-blue-400 to-indigo-500 bg-clip-text text-transparent text-8xl">
+              暴降至 1/7！
+            </span>
+          </h1>
+          <p class="text-white/60 text-3xl font-medium max-w-[800px] leading-relaxed">
+            抛弃“搬字典”，改用“额头贴纸”！<br>
+            SWA 滑动窗口，可缓存 Token 数量<span class="text-blue-400 font-bold">暴涨 5 倍</span>！
+          </p>
+        </div>
+
+        <!-- 场景 3：一人公司 OPC 与自动化红利 -->
+        <div id="scene-3" class="absolute w-full flex flex-col items-center text-center opacity-0 scale-90">
+          <span class="text-emerald-400 font-extrabold text-4xl tracking-widest mb-6 uppercase border border-emerald-400/20 px-6 py-2 rounded-full bg-emerald-400/5">
+            AGENTS WORKFLOW
+          </span>
+          <h1 class="text-white font-black text-7xl leading-tight mb-8">
+            大模型推理免费时代<br>
+            <span class="bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent text-8xl">
+              普通人的红利来了！
+            </span>
+          </h1>
+          <p class="text-white/60 text-3xl font-medium max-w-[800px] leading-relaxed">
+            以前跑不起的复杂 Agent 工作流<br>
+            现在全天候跑，<span class="text-emerald-400 font-bold">闷声大发财</span>！
+          </p>
+        </div>
+
+      </div>
+
+      <!-- 底部：酷炫的滚动进度条 -->
+      <div class="w-full flex flex-col gap-6">
+        <!-- 进度条轨道 -->
+        <div class="w-full h-3 bg-white/5 rounded-full overflow-hidden">
+          <div id="progress-bar" class="w-0 h-full bg-gradient-to-r from-orange-500 via-amber-400 to-emerald-500 rounded-full"></div>
+        </div>
+        <!-- 时间与说明 -->
+        <div class="flex justify-between items-center text-white/30 text-2xl font-bold tracking-widest">
+          <span>00:00</span>
+          <span>柱子哥 · 商业硬核拆解</span>
+          <span>00:12</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- GSAP 时间轴控制 -->
+    <script>
+      window.__timelines = window.__timelines || {};
+      const tl = gsap.timeline({ paused: true });
+
+      // 12秒全局进度条动画
+      tl.to("#progress-bar", { 
+        width: "100%", 
+        ease: "none", 
+        duration: 12 
+      }, 0);
+
+      // 场景 1 进场与退场 (0s - 4s)
+      tl.to("#scene-1", { 
+        opacity: 1, 
+        scale: 1, 
+        duration: 0.6, 
+        ease: "back.out(1.2)" 
+      }, 0.2);
+      tl.to("#scene-1", { 
+        opacity: 0, 
+        scale: 0.95,
+        y: -40, 
+        duration: 0.5, 
+        ease: "power2.in" 
+      }, 3.5);
+
+      // 场景 2 进场与退场 (4s - 8s)
+      tl.to("#scene-2", { 
+        opacity: 1, 
+        scale: 1, 
+        duration: 0.6, 
+        ease: "back.out(1.2)" 
+      }, 4.2);
+      tl.to("#scene-2", { 
+        opacity: 0, 
+        scale: 0.95,
+        y: -40, 
+        duration: 0.5, 
+        ease: "power2.in" 
+      }, 7.5);
+
+      // 场景 3 进场与淡出 (8s - 12s)
+      tl.to("#scene-3", { 
+        opacity: 1, 
+        scale: 1, 
+        duration: 0.6, 
+        ease: "back.out(1.2)" 
+      }, 8.2);
+      tl.to("#scene-3", { 
+        opacity: 0.8, // 结尾平滑过渡
+        duration: 0.5 
+      }, 11.5);
+
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

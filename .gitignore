@@ -48,3 +48,8 @@ content.db
 # 临时文件
 *.tmp
 *.log
+
+# Scratch files / Submodules
+scratch/hyperframes/
+scratch/mimo-video/renders/
+scratch/mimo_mimo_v1.0.mp4
