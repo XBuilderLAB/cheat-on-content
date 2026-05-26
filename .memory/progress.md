@@ -6,7 +6,9 @@
 - [x] 开发升级验证工具 (validate-bump.py)
 - [x] 开发 Agent 团队打分引擎 (agent-teams-evaluator.py)
 - [x] 改造核心子技能 (SKILL.md, score, predict, bump)
-- [x] 语法校验与自测
+- [x] 开发量化风格提取器 `style-extractor.py` (v2独立版)
+- [x] 开发防风控抖音视频网页解析与 ASR 音轨 Whisper 转换下载器 (v2独立版)
+- [x] 全链路真实抖音链接抓取与转录评分实证测试
 - [x] Git 提交
 
 ## 已完成 (Completed)
@@ -21,8 +23,12 @@
 - [x] 改造 skills/cheat-predict/SKILL.md 接入 team 模式并记录 Scored By 元数据
 - [x] 改造 skills/cheat-bump/SKILL.md 接入 2 阶段自动脚本强校准
 - [x] 改造根 SKILL.md 路由与原则声明
-- [x] 对 Python 脚本进行 py_compile 编译通过，并进行 `--help` 测试运行
+- [x] 开发 `tools/style-extractor.py` & `tools/文案风格指纹提取器_v1.0.py` 提取风格特征
+- [x] 开发 `tools/douyin-fetcher.py` & `tools/抖音视频解析器_v1.0.py`（融合 iesdouyin 路由与主页分流，支持 ffmpeg 视频/音频转换提取）
+- [x] 修复本地 `ffmpeg` macOS brew 共享库依赖缺失
+- [x] 用真实抖音主页链接 `https://v.douyin.com/wzGV6q53PEo/` 跑通全链路 ASR 台词识别、自动落盘与评估降级匹配测试
 - [x] 完成 Git 中文 Commit 提交
 
 ## 下一步 (Next Steps)
-- 交付项目给用户，说明已支持的 Agent Teams 功能。
+- 交付给用户并汇报实证测试成果。
+
