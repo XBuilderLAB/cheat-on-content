@@ -79,29 +79,19 @@ def main():
   logger.info(f"开始解析链接: {args.url}")
 
   # 1. 第一步：解析链接类型
-  res_hybrid = fetch_api_json("/api/hybrid/video_data", {"url": args.url})
-  if not res_hybrid:
-    logger.error("无法解析该链接，请确认链接是否有效且 api.douyin.wtf 服务正常")
-    sys.exit(1)
-
-  detail = res_hybrid.get("detail", {})
-  data = detail.get("data", {})
+  logger.info("正在探查链接类型，检测是否为主页链接...")
+  res_sec_user = fetch_api_json("/api/douyin/web/get_sec_user_id", {"url": args.url})
   
-  if not data:
-    logger.error("API 未返回有效的数据体")
-    sys.exit(2)
-
-  sec_user_id = data.get("sec_user_id")
-  nickname = data.get("nickname") or "未命名账号"
-  account_folder = args.account_name if args.account_name else nickname
-  # 清理文件夹命名中的特殊字符
-  account_folder = re.sub(r'[\\/:*?"<>| ]', "_", account_folder)
-
+  sec_user_id = None
+  if res_sec_user and res_sec_user.get("code") == 200:
+    sec_user_id = res_sec_user.get("data")
+    
   aweme_list = []
-
-  if sec_user_id and not data.get("video_id"):
+  nickname = args.account_name or "未命名账号"
+  
+  if sec_user_id:
     # 情况 A：这是一个博主主页链接
-    logger.info(f"检测到主页分享链接。博主: {nickname} (sec_uid: {sec_user_id})")
+    logger.info(f"检测到主页分享链接 (sec_uid: {sec_user_id})")
     logger.info(f"正在拉取该博主最近的 {args.count} 个作品列表...")
     
     res_posts = fetch_api_json("/api/douyin/web/fetch_user_post_videos", {
@@ -109,33 +99,102 @@ def main():
       "count": args.count
     })
     
-    # 提取 aweme_list
     post_data = res_posts.get("data", {}) if res_posts else {}
     if post_data and post_data.get("aweme_list"):
       aweme_list = post_data["aweme_list"]
+      # 从最近的作品中尝试获取博主姓名以覆盖未命名状态
+      for aweme in aweme_list:
+        author = aweme.get("author", {})
+        if author and author.get("nickname"):
+          nickname = author.get("nickname")
+          break
     else:
       logger.error("拉取用户主页作品失败")
       sys.exit(3)
   else:
     # 情况 B：这是一个单个视频链接
-    logger.info(f"检测到单视频分享链接。博主: {nickname}")
-    aweme_list = [data]
-
+    logger.info("未检测到主页特征，按单视频分享链接进行本地免 Cookie HTML 解密...")
+    
+    # 模拟重定向获取真实的 video_id
+    cmd_redirect = [
+      "curl", "-s", "-I", "-L",
+      "-H", "User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgiOS/121.0.2277.107 Version/17.0 Mobile/15E148 Safari/604.1",
+      args.url
+    ]
+    try:
+      res = subprocess.run(cmd_redirect, capture_output=True, text=True, encoding="utf-8")
+      locations = re.findall(r'[lL]ocation:\s*([^\r\n]+)', res.stdout)
+      final_url = locations[-1] if locations else args.url
+      
+      video_id_match = re.search(r'video/(\d+)', final_url)
+      if not video_id_match:
+        video_id_match = re.search(r'/(\d+)(?:\?|$)', final_url)
+        
+      if not video_id_match:
+        logger.error(f"无法从最终重定向链接中提取出 19 位数字的视频 ID: {final_url}")
+        sys.exit(1)
+        
+      video_id = video_id_match.group(1)
+      logger.info(f"成功提取视频 ID: {video_id}。开始向 iesdouyin 发起免 Cookie 安全数据爬取...")
+      
+      ies_url = f"https://www.iesdouyin.com/share/video/{video_id}"
+      cmd_fetch = [
+        "curl", "-s", "-L",
+        "-H", "User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgiOS/121.0.2277.107 Version/17.0 Mobile/15E148 Safari/604.1",
+        ies_url
+      ]
+      result = subprocess.run(cmd_fetch, capture_output=True, text=True, encoding="utf-8")
+      
+      pattern = re.compile(pattern=r"window\._ROUTER_DATA\s*=\s*(.*?)</script>", flags=re.DOTALL)
+      find_res = pattern.search(result.stdout)
+      if not find_res:
+        logger.error("在网页 HTML 源码中未匹配到 window._ROUTER_DATA 数据盾，视频可能已被删除或风控限制。")
+        sys.exit(2)
+        
+      json_str = find_res.group(1).strip()
+      if json_str.endswith(';'):
+        json_str = json_str[:-1]
+        
+      json_data = json.loads(json_str)
+      loader_data = json_data.get("loaderData", {})
+      VIDEO_ID_PAGE_KEY = "video_(id)/page"
+      NOTE_ID_PAGE_KEY = "note_(id)/page"
+      
+      original_video_info = None
+      if VIDEO_ID_PAGE_KEY in loader_data:
+        original_video_info = loader_data[VIDEO_ID_PAGE_KEY].get("videoInfoRes")
+      elif NOTE_ID_PAGE_KEY in loader_data:
+        original_video_info = loader_data[NOTE_ID_PAGE_KEY].get("videoInfoRes")
+        
+      if not original_video_info or not original_video_info.get("item_list"):
+        logger.error("iesdouyin 解析成功但未匹配到 item_list 作品列表")
+        sys.exit(3)
+        
+      data = original_video_info["item_list"][0]
+      nickname = data.get("author", {}).get("nickname") or data.get("nickname") or "未命名账号"
+      aweme_list = [data]
+    except Exception as e:
+      logger.error(f"本地解密单视频网页数据失败: {e}")
+      sys.exit(4)
+ 
   if not aweme_list:
     logger.error("未获取到任何有效的视频信息")
     sys.exit(4)
-
+ 
+  # 文件夹及命名清洗，遵守 Rule 6.5
+  account_folder = args.account_name if args.account_name else nickname
+  account_folder = re.sub(r'[\\/:*?"<>| ]', "_", account_folder)
+ 
   logger.info(f"共获取到 {len(aweme_list)} 个待处理视频。开始批量执行下载与文案提取流程...")
-
-  # 本地路径定义，遵守 Rule 6.5
+ 
   samples_base = Path("samples")
-
+ 
   for i, aweme in enumerate(aweme_list):
     aweme_id = aweme.get("aweme_id") or aweme.get("video_id")
     desc = aweme.get("desc") or "无标题"
     stats = aweme.get("statistics", {})
     
-    # 提取无水印音频地址
+    # 优先提取无水印音频地址
     audio_url = ""
     music_info = aweme.get("music", {})
     if music_info and music_info.get("play_url"):
@@ -146,24 +205,54 @@ def main():
       elif play_url_obj.get("uri"):
         audio_url = play_url_obj["uri"]
         
-    if not audio_url:
-      logger.warning(f"视频 {aweme_id} 未找到音频播放地址，跳过")
+    # 若无直接音频（如网页单视频数据），则提取无水印视频地址并提取音轨
+    video_url = ""
+    video_info = aweme.get("video", {})
+    if video_info and video_info.get("play_addr"):
+      v_url_list = video_info["play_addr"].get("url_list")
+      if v_url_list and len(v_url_list) > 0:
+        video_url = v_url_list[0].replace("playwm", "play")
+        
+    if not audio_url and not video_url:
+      logger.warning(f"视频 {aweme_id} 未找到任何有效的音频或视频播放地址，跳过")
       continue
-
+ 
     logger.info(f"[{i+1}/{len(aweme_list)}] 处理视频 ID: {aweme_id} | 描述: {desc[:20]}...")
-
+ 
     # 创建目标样本存放文件夹
     video_dir = samples_base / account_folder / aweme_id
     video_dir.mkdir(parents=True, exist_ok=True)
     audio_path = video_dir / "audio.mp3"
-
-    # 下载音频
-    try:
-      download_file(audio_url, audio_path)
-    except Exception:
-      logger.error(f"视频 {aweme_id} 音频下载失败，跳过")
-      continue
-
+ 
+    # 自适应音频下载与提取
+    if audio_url:
+      logger.info("检测到无水印直接音频链接，正在极速下载...")
+      try:
+        download_file(audio_url, audio_path)
+      except Exception:
+        logger.error(f"视频 {aweme_id} 音频下载失败")
+        continue
+    else:
+      logger.info("未检测到直接音频。正在下载无水印视频并转码提取音轨...")
+      video_path = video_dir / "temp_video.mp4"
+      try:
+        download_file(video_url, video_path)
+        logger.info("正在使用 ffmpeg 转换 MP4 为 MP3 格式...")
+        # 调用 ffmpeg 命令行提取音频
+        cmd_ffmpeg = [
+          "ffmpeg", "-y", "-i", str(video_path),
+          "-vn", "-acodec", "libmp3lame", "-q:a", "2",
+          str(audio_path)
+        ]
+        subprocess.run(cmd_ffmpeg, check=True, capture_output=True)
+        logger.info("FFmpeg 音轨提取转换成功！")
+      except Exception as e:
+        logger.error(f"视频 {aweme_id} 音视频下载转换失败: {e}")
+        continue
+      finally:
+        if video_path.is_file():
+          video_path.unlink()
+ 
     # 生成 meta.md 头部元数据
     # 计算播放量转化为 w 单位，便于 validate-bump 解析
     raw_play = stats.get("play_count", 0)
