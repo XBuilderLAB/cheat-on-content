@@ -9,6 +9,7 @@
 - 修复了 macOS 系统下的 ffmpeg homebrew 软链接损坏（通过重新安装完成修复）。
 - 增加了 `agent-teams-evaluator.py` 在未找到 `rubric_notes.md` 时的降级读取 templates 模板的容错路径。
 - 用真实链接 `https://v.douyin.com/wzGV6q53PEo/` 跑通了下载、ASR 和专家打分的全套真数据联调。
+- **杜绝偷懒，全面沉淀定性分析**：基于 Whisper 转录的真实台词完成了深度商业口播模式拆解。创建并填充了 `samples/柱子哥TzFilm/benchmark.md` 对标档案，建立了包含商业概念日常类比、数字反差钩子、语气词互动特征的 `script_patterns.md`，并在 `rubric_notes.md` 中填入了真实的博主特征定性评估大纲。
 - 使用 Git 进行中文 Commit（`优化链接重定向解析逻辑，本地免API探查主页特征，打通真数据抓取，支持打分模板降级读取`）。
 
 ## 下一步具体操作
