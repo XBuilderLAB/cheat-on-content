@@ -79,13 +79,33 @@ def main():
   logger.info(f"开始解析链接: {args.url}")
 
   # 1. 第一步：解析链接类型
-  logger.info("正在探查链接类型，检测是否为主页链接...")
-  res_sec_user = fetch_api_json("/api/douyin/web/get_sec_user_id", {"url": args.url})
+  logger.info("正在模拟跳转以探查链接类型，识别主页与单视频...")
+  cmd_redirect = [
+    "curl", "-s", "-I", "-L",
+    "-H", "User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgiOS/121.0.2277.107 Version/17.0 Mobile/15E148 Safari/604.1",
+    args.url
+  ]
   
   sec_user_id = None
-  if res_sec_user and res_sec_user.get("code") == 200:
-    sec_user_id = res_sec_user.get("data")
+  final_url = args.url
+  try:
+    res = subprocess.run(cmd_redirect, capture_output=True, text=True, encoding="utf-8")
+    locations = re.findall(r'[lL]ocation:\s*([^\r\n]+)', res.stdout)
+    final_url = locations[-1].strip() if locations else args.url
     
+    # 尝试匹配主页特征
+    user_match = re.search(r'share/user/([a-zA-Z0-9_-]+)', final_url)
+    if user_match:
+      sec_user_id = user_match.group(1)
+    else:
+      # 尝试从 query 参数中匹配 sec_uid
+      parsed_url = urllib.parse.urlparse(final_url)
+      params = urllib.parse.parse_qs(parsed_url.query)
+      if 'sec_uid' in params:
+        sec_user_id = params['sec_uid'][0]
+  except Exception as e:
+    logger.warning(f"分析跳转链接失败: {e}，将尝试直接作为单视频处理")
+
   aweme_list = []
   nickname = args.account_name or "未命名账号"
   
@@ -113,19 +133,8 @@ def main():
       sys.exit(3)
   else:
     # 情况 B：这是一个单个视频链接
-    logger.info("未检测到主页特征，按单视频分享链接进行本地免 Cookie HTML 解密...")
-    
-    # 模拟重定向获取真实的 video_id
-    cmd_redirect = [
-      "curl", "-s", "-I", "-L",
-      "-H", "User-Agent: Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgiOS/121.0.2277.107 Version/17.0 Mobile/15E148 Safari/604.1",
-      args.url
-    ]
+    logger.info("按单视频分享链接进行本地免 Cookie HTML 解密...")
     try:
-      res = subprocess.run(cmd_redirect, capture_output=True, text=True, encoding="utf-8")
-      locations = re.findall(r'[lL]ocation:\s*([^\r\n]+)', res.stdout)
-      final_url = locations[-1] if locations else args.url
-      
       video_id_match = re.search(r'video/(\d+)', final_url)
       if not video_id_match:
         video_id_match = re.search(r'/(\d+)(?:\?|$)', final_url)

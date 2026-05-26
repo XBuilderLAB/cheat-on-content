@@ -248,8 +248,13 @@ def main() -> int:
     # Locate rubric_notes.md
     rubric_path = Path("rubric_notes.md")
     if not rubric_path.is_file():
-        logger.error("未找到 rubric_notes.md 文件，请在项目根目录下运行。")
-        return 2
+        fallback_path = Path("templates/rubric_notes.template.md")
+        if fallback_path.is_file():
+            logger.warning("未找到 rubric_notes.md，已自动降级读取 templates/rubric_notes.template.md 模板！")
+            rubric_path = fallback_path
+        else:
+            logger.error("未找到 rubric_notes.md 文件，且未找到 templates/rubric_notes.template.md 备份，请在项目根目录下运行。")
+            return 2
     
     rubric_notes = rubric_path.read_text(encoding="utf-8")
 
