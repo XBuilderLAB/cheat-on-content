@@ -1,0 +1,93 @@
+diff --git a/hooks/session-start.sh b/hooks/session-start.sh
+index e22b3df..eda48fc 100755
+--- a/hooks/session-start.sh
++++ b/hooks/session-start.sh
+@@ -14,6 +14,8 @@
+ #   ⏰ 待复盘: N
+ #   🎯 候选 top 3: ...
+ #   📅 上次抓热点: N 天前
++#   🔄 当前位置：第 N 步：xxx
++#   ➡️ 下一步：xxx → /cheat-xxx
+ #   ⚠️ 待办: ...
+ 
+ set -uo pipefail
+@@ -52,6 +54,10 @@ hooks_installed=$(echo "$state" | jq -r '.hooks_installed // false')
+ form_severe_mismatch=$(echo "$state" | jq -r '.rubric_form_severe_mismatch // false')
+ last_prediction_self_scored=$(echo "$state" | jq -r '.last_prediction_self_scored // false')
+ last_self_scored_at=$(echo "$state" | jq -r '.last_self_scored_at // ""')
++benchmark_status=$(echo "$state" | jq -r '.benchmark_status // "none"')
++in_progress_session=$(echo "$state" | jq -r '.in_progress_session // empty')
++last_bump_at=$(echo "$state" | jq -r '.last_bump_at // ""')
++consecutive_errors=$(echo "$state" | jq -r '.consecutive_directional_errors // [] | length')
+ 
+ # --- Detect schema mismatch (read LATEST_SCHEMA from migrations/registry.md if reachable) ---
+ # Strategy: hardcode current LATEST_SCHEMA here (bumped by maintainer alongside cheat-init).
+@@ -180,6 +186,55 @@ if [[ -n "$last_trends_at" ]]; then
+   fi
+ fi
+ 
++# --- 工作流位置追踪 ---
++workflow_step=""
++workflow_next=""
++workflow_tip=""
++
++# 优先级从高到低检查，匹配第一个命中的步骤
++
++# Step 1: 导入对标（cold-start 用户的第一步）
++if [[ "$benchmark_status" != "imported" ]] && [[ "$calibration_samples" -eq 0 ]]; then
++  workflow_step="📚 第 2 步：导入对标账号"
++  workflow_next="建议执行 /cheat-learn-from 导入 1-2 个对标账号，让系统有 anchor"
++  workflow_tip="没有对标数据的预测基本是占星——强烈建议先导入"
++
++# Step 6: 复盘（有时效性，优先级高）
++elif [[ $due_count -gt 0 ]]; then
++  workflow_step="📊 第 7 步：数据复盘"
++  workflow_next="有 ${due_count} 篇到期复盘 → /cheat-retro"
++  workflow_tip="不复盘的预测等于占星——数据回流是校准的核心"
++
++# Step 5: 发布（buffer 有存货但未发布）
++elif [[ $buffer_count -gt 0 ]]; then
++  workflow_step="📤 第 6 步：发布登记"
++  workflow_next="buffer 有 ${buffer_count} 篇待发 → /cheat-publish <链接>"
++  workflow_tip="拍了就发，别让时效性流失"
++
++# Step 4: 拍摄（预测已锁定，等待拍摄）
++elif [[ -n "$in_progress_session" ]] && [[ "$in_progress_session" != "null" ]]; then
++  workflow_step="🎬 第 5 步：拍摄"
++  workflow_next="预测已锁定，等待拍摄 → /cheat-shoot"
++  workflow_tip="拍完后如果改稿超 30% 会自动触发 v2 预测"
++
++# Step 7: 升级公式（积累够样本或有系统性偏差）
++elif { [[ $calibration_samples -ge 5 ]] && [[ -z "$last_bump_at" ]]; } || { [[ $consecutive_errors -ge 3 ]]; }; then
++  workflow_step="🔧 第 8 步：升级公式"
++  if [[ $consecutive_errors -ge 3 ]]; then
++    workflow_next="检测到系统性偏差（连续 ${consecutive_errors} 次同向）→ /cheat-bump"
++    workflow_tip="连续同向偏差说明 rubric 公式需要调整"
++  else
++    workflow_next="已积累 ${calibration_samples} 个校准样本 → /cheat-bump"
++    workflow_tip="样本够了可以升级公式，让预测更准"
++  fi
++
++# Step 2: 选题写稿（默认）
++else
++  workflow_step="✍️ 第 3 步：选题写稿"
++  workflow_next="选一个话题开始 → /cheat-seed"
++  workflow_tip="说'今天 AI 圈有什么'可调用 aihot 获取 AI 热点"
++fi
++
+ # --- Build the report ---
+ echo ""
+ echo "[cheat-on-content / SessionStart 状态报告]"
+@@ -192,6 +247,12 @@ echo "$candidates_label"
+ # Confidence indicator
+ echo "📈 校准样本: ${calibration_samples} | Confidence: ${confidence}"
+ 
++# Workflow position
++echo ""
++echo "🔄 当前位置：${workflow_step}"
++echo "➡️ 下一步：${workflow_next}"
++[[ -n "$workflow_tip" ]] && echo "💡 ${workflow_tip}"
++
+ # Warnings (high priority)
+ [[ -n "$buffer_warning" ]] && echo "" && echo "$buffer_warning"
+ [[ -n "$schema_mismatch" ]] && echo "" && echo "$schema_mismatch"
