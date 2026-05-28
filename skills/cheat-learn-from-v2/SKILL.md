@@ -116,9 +116,11 @@ samples/<账号名>/<video-id>/
 └── meta.md (标题 / 数据 / 印象 / 印象理由)
 ```
 
-**【联动打分与落盘】**：为了让对标样本可以参与后期的升级 Spearman 刚性校验，在写入 `meta.md` 后，自动运行：
-`python3 tools/agent-teams-evaluator.py --draft samples/<账号名>/<video-id>/transcript.md` 
-获取 7 维专家打分，并将打分输出的 Markdown 表格作为 `## 初始打分` 区块追加写入到 `samples/<账号名>/<video-id>/meta.md` 文件底部。
+**【联动打分与落盘】**：为了让对标样本可以参与后期的升级 Spearman 刚性校验，在 Python 脚本完成 ASR 写入后：
+- 由 Agent (我们) 自动读取新样本的 `samples/<账号名>/<video-id>/transcript.md`；
+- 在会话中，Agent 自动扮演打分团队进行内生多智能体博弈评估，生成 7 维专家打分；
+- 随后由 Agent 调用文件修改工具，将该打分的 Markdown 表格作为 `## 初始打分` 区块追加写入到 `samples/<账号名>/<video-id>/meta.md` 文件底部。
+
 
 #### 6c. script_patterns.md
 在 `script_patterns.md` 中写入 untested 对标借鉴 pattern 块。
