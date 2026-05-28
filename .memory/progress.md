@@ -8,10 +8,10 @@
 - [x] 改造核心子技能 (SKILL.md, score, predict, bump)
 - [x] 开发量化风格提取器 `style-extractor.py` (v2独立版)
 - [x] 开发防风控抖音视频网页解析与 ASR 音轨 Whisper 转换下载器 (v2独立版)
-- [x] **[新增]** 开发自动化多模态视频生产工具 `tools/视频生成压制器_v1.0.py`
-- [x] **[新增]** 压制生成 Xiaomi MiMo-V2.5 口播高清短视频 Demo
+- [x] 开发自动化多模态视频生产工具 `tools/视频生成压制器_v1.0.py`
+- [x] 压制生成 Xiaomi MiMo-V2.5 口播高清短视频 Demo
 - [x] 全链路真实抖音链接抓取与转录评分实证测试
-- [x] Git 提交与归档
+- [x] **[新增]** Git 提交与个人远程仓库 `skills` 分支推送归档
 
 ## 已完成 (Completed)
 - [x] 项目结构与规范梳理
@@ -28,7 +28,8 @@
 - [x] 开发 `tools/style-extractor.py` & `tools/文案风格指纹提取器_v1.0.py` 提取风格特征
 - [x] 开发 `tools/douyin-fetcher.py` & `tools/抖音视频解析器_v1.0.py`（集成 ASR 与 FFmpeg 提取转录）
 - [x] 重构项目为 skills 分支架构，大模型打分与决策完全上移至 Agent 内生模拟，脱离 API 限制
-- [x] **[新增]** 开发原生视频生产工具并合成 Xiaomi MiMo 多模态口播 HD 短视频 Demo
+- [x] 开发原生视频生产工具并合成 Xiaomi MiMo 多模态口播 HD 短视频 Demo
+- [x] **[新增]** 将项目 Remote 重定向至用户个人 Github 并成功推送 `skills` 分支
 
 ## 下一步 (Next Steps)
 - 等待用户对生成的多模态成品视频以及免 API 运行的实证反馈。
