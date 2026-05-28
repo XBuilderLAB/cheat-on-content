@@ -303,23 +303,9 @@ def main():
       logger.warning("未检测到 adapters/script-extraction/whisper/run.sh，无法自动执行 ASR 转录")
       (video_dir / "transcript.md").write_text("N/A", encoding="utf-8")
 
-    # 3. 第三步：调用 Agent Teams 对转写文案执行初始自动打分
-    evaluator_script = Path("tools/agent-teams-evaluator.py")
-    transcript_path = video_dir / "transcript.md"
-    
-    if evaluator_script.is_file() and transcript_path.is_file() and transcript_path.read_text(encoding="utf-8").strip() != "N/A":
-      logger.info(f"正在唤醒 Agent Teams 进行冷启动初评分...")
-      cmd_eval = [sys.executable, str(evaluator_script), "--draft", str(transcript_path)]
-      try:
-        # 执行打分并截获 stdout
-        eval_result = subprocess.run(cmd_eval, capture_output=True, text=True, encoding="utf-8", check=True)
-        # 将打分矩阵表格追加写入 meta.md
-        with open(meta_path, "a", encoding="utf-8") as f_meta:
-          f_meta.write("## 初始打分\n")
-          f_meta.write(eval_result.stdout)
-        logger.info(f"Agent Teams 初评分已追加写入 meta.md")
-      except subprocess.CalledProcessError as e:
-        logger.error(f"Agent Teams 评分失败: {e.stderr if e.stderr else e}")
+    # 初始打分交由 Skill 层调度 Agent 内生打分并写入，此地保持纯本地数据写入
+    logger.info(f"完成视频 ID: {aweme_id} 的媒体拉取与 ASR。待 Skill 调度 Agent 打分。")
+
         
   logger.info("全自动导入及打分流程执行完毕！")
 
