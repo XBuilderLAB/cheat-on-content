@@ -138,13 +138,14 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, WebFetch, Skill
 
 > "你内容主要在哪个平台？
 > a) 抖音 — 装 douyin-session adapter（Playwright + 扫码登录抖音创作者中心）
-> b) YouTube — 装 youtube-data-api adapter（需 API key）
-> c) B 站 — bilibili-stat adapter
-> d) 其他 / 多平台 — 走 manual paste 模式"
+> b) 小红书 — 装 xhs-explore adapter（Playwright + 扫码登录小红书创作者中心）
+> c) YouTube — 装 youtube-data-api adapter（需 API key）
+> d) B 站 — bilibili-stat adapter
+> e) 其他 / 多平台 — 走 manual paste 模式"
 
-如选 a/b/c → 询问 Q2.2；如选 d → 跳到 Q2.3 manual。
+如选 a/b/c/d → 询问 Q2.2；如选 e → 跳到 Q2.3 manual。
 
-**Q2.2: adapter 安装时机**（仅 Q2.1=a/b/c）
+**Q2.2: adapter 安装时机**（仅 Q2.1=a/b/c/d）
 
 > "现在装 adapter 自动抓取，还是先手动告诉我？
 > - 现在装 — 引导你装 Playwright + 扫码 → 抓回最近 N 条数据
@@ -287,7 +288,7 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
      "data_layer": "markdown",
      "hooks_installed": <查 Q5 映射表，写 bool true/false>,
      "enabled_trend_sources": ["manual-paste"],
-     "enabled_perf_adapters": <Q2.1=a→[\"douyin-session\"]；b→[\"youtube-data-api\"]；c→[\"bilibili-stat\"]；其他→[]>,
+     "enabled_perf_adapters": <Q2.1=a→[\"douyin-session\"]；b→[\"xhs-explore\"]；c→[\"youtube-data-api\"]；d→[\"bilibili-stat\"]；其他→[]>,
      "last_bump_at": null,
      "last_bump_self_audited": false,
      "last_published_at": null,

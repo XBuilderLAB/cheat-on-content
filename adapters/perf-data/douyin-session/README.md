@@ -117,6 +117,6 @@ adapters/perf-data/douyin-session/
 
 - `youtube-data-api`（待）— YouTube 用官方 API，不需要 Playwright，更轻
 - `bilibili-stat`（待）— B 站官方 stat 接口公开，也不需要 Playwright
-- `xhs-explore`（待）— 小红书也走 Playwright 路线，可借鉴本 adapter
+- `xhs-explore` — 小红书，已实现（同样走 Playwright 被动拦截路线，照搬自本 adapter）
 
 如果你做多平台内容，**只装你实际用的 adapter**——不需要全装。

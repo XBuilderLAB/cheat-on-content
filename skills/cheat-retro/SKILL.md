@@ -92,16 +92,25 @@ allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill
 
 | Platform | Adapter | 调用方式 |
 |---|---|---|
-| `douyin` | `adapters/perf-data/douyin-session/` | `bash <skills-dir>/../adapters/perf-data/douyin-session/run.sh <aweme_id> <video_folder>` |
+| `douyin` | `adapters/perf-data/douyin-session/` | `bash <adapters-dir>/douyin-session/run.sh <aweme_id> <video_folder>` |
+| `xhs` | `adapters/perf-data/xhs-explore/` | `bash <adapters-dir>/xhs-explore/run.sh <note_id> <video_folder>` |
 | `youtube` | `adapters/perf-data/youtube-data-api/`（待） | 调 YouTube Data API（需 API key） |
 | `bilibili` | `adapters/perf-data/bilibili-stat/`（待） | 调 B 站官方 stat 接口 |
 | 其他 | 无 adapter | 优雅降级到 Path A |
+
+> `<adapters-dir>` = 克隆源码处的 `cheat-on-content/adapters/perf-data/`（install.sh **不**复制 adapter 到 ~/.claude/skills，只复制 15 个 skill）。定位：`find ~ -path '*/cheat-on-content/adapters/perf-data' -type d | head -1`。
 
 **douyin-session 的特殊处理**：
 - 视频 URL（如 `https://v.douyin.com/abc123`）→ 短链解析 → 提取 aweme_id
 - 调用前确认 cookie 文件存在（adapter 会找 `.auth/`）；不存在则提示用户先跑 `python <adapter>/crawler.py login`
 - adapter 输出在 `<video_folder>/report.md`（adapter 的 renderer.py 已经按这个格式写）
 - cheat-retro 读这个 report.md 解析关键数据 → 摘要写入 prediction 的复盘段
+
+**xhs-explore 的特殊处理**：
+- 笔记 URL（`https://www.xiaohongshu.com/explore/<note_id>?xsec_token=...` 或 `https://xhslink.com/xxx`）→ 提取 note_id
+- 调用前确认 cookie 存在（adapter 找 `.auth-xhs/`）；不存在则提示先跑 `python <adapter>/crawler.py login`
+- 字段已校准（观看 `view_count` 等已写死）；万一接口改版导致某项为 0，看 report.md 末尾 galaxy 原始 JSON，把新 key 加进 `crawler.py` 的 `_normalize_note`
+- **评论可能抓不到**（xsec_token 缺失 / 评论关闭）→ report.md 标"未抓到评论" → 此时**降级要求用户 manual 粘 top 20 评论**（评论是真信号，不能省）
 
 **任何 adapter 失败**（cookie 过期 / 接口变化 / 网络）→ **优雅降级到 manual**，提示用户："adapter 调用失败，原因 [X]。改用 manual 模式——粘下面的数据"。**不阻塞流程**。
 

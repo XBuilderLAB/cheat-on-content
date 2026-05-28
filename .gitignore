@@ -37,6 +37,7 @@ content.db
 
 # adapter 跑过留下的
 .auth/
+.auth-xhs/
 .debug/
 
 # Editor / IDE
