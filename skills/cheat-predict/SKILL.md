@@ -2,10 +2,11 @@
 name: cheat-predict
 description: 给最终稿写一份 immutable 盲预测日志。这是 cheat-on-content 整个校准循环的核心动作——预测段一旦写完不可改，由 hook 强制。**自动检测**：如目标文件已有 `## 预测` / `## 预测 v1` 段（被 cheat-shoot 调用走 v2 模式），改成 append `## 预测 v2` 而非覆盖。触发词："启动预测"/"start prediction"/"给这稿子打分并预测"/"写预测日志"。
 argument-hint: <script-path> [— mode: v1|v2] [— prediction-file: <path>]
-allowed-tools: Bash(*), Read, Write, Edit, Glob
+allowed-tools: Read, Write, Edit, Glob
 ---
 
 # /cheat-predict — AI 主导的盲预测 + 用户 review
+
 
 **这个工具是"作弊器"——AI 帮你做判断**。所以 cheat-predict 的核心是：
 - **Claude 自己**读稿子 + 打 7 维分 + 给 bucket + 概率分布 + 反事实场景
@@ -136,10 +137,13 @@ Confidence 派生表见 [shared-references/state-management.md](../../shared-ref
 由 **Claude 单体** 快速打分。每个维度给 0-5 整数分 + 一行理由（≤30 字，引用稿件具体细节）。
 
 #### 选项 B：team 模式（Agent Teams 协作打分）
-- **API 模式**：调用并运行 `python tools/agent-teams-evaluator.py --draft <script-path> --mode team`。解析脚本输出结果拿到各专家分数、冲突辩论过程及最终 composite。
-- **内生模拟模式**：由 Claude 在会话中扮演 Manager 派生出 3 个虚拟专家子 Agent 进行打分，发生分歧（分差 ≥ 2）时模拟两轮自辩讨论（详见 `shared-references/agent-teams-protocol.md`），生成最终得分。
 
-按公式算出 composite。并在预测落盘文件的 header 的 `Scored By` 字段中记录为 `agent-team`（若有用户覆盖则记录为 `agent-team+user_override`）。
+直接由 Claude（我们）在当前会话中扮演 Manager 并分流出三个虚拟子 Agent 进行**合意共识打分**（遵循 `shared-references/agent-teams-protocol.md`），无须配置任何外部 API 密钥：
+- **HS-Agent** (Hook & Emotion) 评估 `HP` / `ER`。
+- **LS-Agent** (Logic & Structure) 评估 `QL` / `NA` / `SAT` / `LE`。
+- **AM-Agent** (Audience & Market) 评估 `AB` / `SR` / `TS`。
+每个维度由主审和备审专家独立打分。若两人估分差值 ≥ 2，在 CoT 脑内进行两轮自辩讨论（陈述事实 -> 交叉驳斥与让步），最终由 Manager 裁决。生成最终得分并在预测落盘文件的 header 的 `Scored By` 字段中记录为 `agent-team`（若有用户覆盖则记录为 `agent-team+user_override`）。
+
 
 这一步先在内存里做，不输出——等 Phase 5.5 review 时一次性展示给用户。
 
