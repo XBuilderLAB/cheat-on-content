@@ -8,8 +8,10 @@
 - [x] 改造核心子技能 (SKILL.md, score, predict, bump)
 - [x] 开发量化风格提取器 `style-extractor.py` (v2独立版)
 - [x] 开发防风控抖音视频网页解析与 ASR 音轨 Whisper 转换下载器 (v2独立版)
+- [x] **[新增]** 开发自动化多模态视频生产工具 `tools/视频生成压制器_v1.0.py`
+- [x] **[新增]** 压制生成 Xiaomi MiMo-V2.5 口播高清短视频 Demo
 - [x] 全链路真实抖音链接抓取与转录评分实证测试
-- [x] Git 提交
+- [x] Git 提交与归档
 
 ## 已完成 (Completed)
 - [x] 项目结构与规范梳理
@@ -24,13 +26,9 @@
 - [x] 改造 skills/cheat-bump/SKILL.md 接入 2 阶段自动脚本强校准
 - [x] 改造根 SKILL.md 路由与原则声明
 - [x] 开发 `tools/style-extractor.py` & `tools/文案风格指纹提取器_v1.0.py` 提取风格特征
-- [x] 开发 `tools/douyin-fetcher.py` & `tools/抖音视频解析器_v1.0.py`（融合 iesdouyin 路由与主页分流，支持 ffmpeg 视频/音频转换提取）
-- [x] 修复本地 `ffmpeg` macOS brew 共享库依赖缺失
-- [x] 用真实抖音主页链接 `https://v.douyin.com/wzGV6q53PEo/` 跑通全链路 ASR 台词识别、自动落盘与评估降级匹配测试
-- [x] 完成 Git 中文 Commit 提交
-- [x] 重构项目为 skills 分支架构，大模型打分与决策完全上移至 Agent 内生模拟，剥离外部 API 依赖
+- [x] 开发 `tools/douyin-fetcher.py` & `tools/抖音视频解析器_v1.0.py`（集成 ASR 与 FFmpeg 提取转录）
+- [x] 重构项目为 skills 分支架构，大模型打分与决策完全上移至 Agent 内生模拟，脱离 API 限制
+- [x] **[新增]** 开发原生视频生产工具并合成 Xiaomi MiMo 多模态口播 HD 短视频 Demo
 
 ## 下一步 (Next Steps)
-- 等待用户对免 API 运行的实证反馈。
-
-
+- 等待用户对生成的多模态成品视频以及免 API 运行的实证反馈。
