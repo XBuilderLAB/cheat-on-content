@@ -28,7 +28,9 @@
 - [x] 修复本地 `ffmpeg` macOS brew 共享库依赖缺失
 - [x] 用真实抖音主页链接 `https://v.douyin.com/wzGV6q53PEo/` 跑通全链路 ASR 台词识别、自动落盘与评估降级匹配测试
 - [x] 完成 Git 中文 Commit 提交
+- [x] 重构项目为 skills 分支架构，大模型打分与决策完全上移至 Agent 内生模拟，剥离外部 API 依赖
 
 ## 下一步 (Next Steps)
-- 交付给用户并汇报实证测试成果。
+- 等待用户对免 API 运行的实证反馈。
+
 
