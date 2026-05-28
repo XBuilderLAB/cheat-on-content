@@ -19,9 +19,7 @@ allowed-tools: Read, Glob, Grep, Bash(*)
 [模式判定: single 模式还是 team 模式?]
   ↓
   ├─ single  →  [Claude 单体快速逐维度打分]
-  └─ team    →  [检测 API 秘钥与环境]
-                  ├─ 有 API  →  [运行 tools/agent-teams-evaluator.py 自动合意打分]
-                  └─ 无 API  →  [Claude 脑内模拟 HS/LS/AM/Manager 专家会商与共识博弈]
+  └─ team    →  [Claude 脑内模拟 HS/LS/AM/Manager 专家会商与共识博弈]
   ↓
 [计算并渲染 composite 分数矩阵表]
   ↓
@@ -72,15 +70,13 @@ allowed-tools: Read, Glob, Grep, Bash(*)
 2. 给出首个直觉 **整数**，并写一行理由（≤30 字，引用稿件具体文案）。
 
 #### 选项 B：team 模式（Agent Teams 协作打分）
-1. **API 自动模式**：检查环境或 `.env` 是否有 `GEMINI_API_KEY` 或 `OPENAI_API_KEY`。
-   - 若有，运行 `python tools/agent-teams-evaluator.py --draft <draft-path>`。
-   - 读取并输出其打印的专家评分矩阵、冲突解决过程以及最终 consensus 分数。
-2. **内生模拟模式**：若无 API，由 Claude（我们）在当前会话中扮演 Manager 并分流出三个虚拟子 Agent 进行**合意共识打分**（遵循 `shared-references/agent-teams-protocol.md`）：
-   - **HS-Agent** (Hook & Emotion) 评估 `HP` / `ER`。
-   - **LS-Agent** (Logic & Structure) 评估 `QL` / `NA` / `SAT` / `LE`。
-   - **AM-Agent** (Audience & Market) 评估 `AB` / `SR` / `TS`。
-   - 每个维度由主审和备审专家独立打分。若两人估分差值 ≥ 2，在 CoT 脑内进行两轮自辩讨论（陈述事实 -> 交叉驳斥与让步），最终由 Manager 裁决。
-   - 输出中明确呈现每维度的“主审分/备审分”以及冲突辩论过程，最后归一计算。
+
+直接由 Claude（我们）在当前会话中扮演 Manager 并分流出三个虚拟子 Agent 进行**合意共识打分**（遵循 `shared-references/agent-teams-protocol.md`），无须配置任何外部 API 密钥：
+- **HS-Agent** (Hook & Emotion) 评估 `HP` / `ER`。
+- **LS-Agent** (Logic & Structure) 评估 `QL` / `NA` / `SAT` / `LE`。
+- **AM-Agent** (Audience & Market) 评估 `AB` / `SR` / `TS`。
+每个维度由主审和备审专家独立打分。若两人估分差值 ≥ 2，在 CoT 脑内进行两轮自辩讨论（陈述事实 -> 交叉驳斥与让步），最终由 Manager 裁决。输出中明确呈现每维度的“主审分/备审分”以及冲突辩论过程，最后归一计算。
+
 
 打分速度纪律（限 single 模式）：
 - 每个维度 ≤ 30 秒思考时间。相信第一个整数，不提前查实绩锚点。
