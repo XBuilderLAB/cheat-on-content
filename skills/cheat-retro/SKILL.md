@@ -1,13 +1,13 @@
 ---
 name: cheat-retro
-description: T+N 天数据回收 + 复盘 + 把新观察写入 rubric_notes.md。这是校准循环的反馈环节——不复盘的预测等于占星。触发词："复盘 [path]"/"retro this"/"T+3d 数据来了"/"抓数据 [path]"/"把这篇复盘了"。
+description: T+N 天数据回收 + 复盘 + 把实绩观察写入 rubric-memo.md。这是校准循环的反馈环节——不复盘的预测等于占星。触发词："复盘 [path]"/"retro this"/"T+3d 数据来了"/"抓数据 [path]"/"把这篇复盘了"。
 argument-hint: <prediction-file> [— window: 3|5|7] [— source: manual|adapter]
 allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill
 ---
 
 # /cheat-retro — 数据回收与复盘
 
-抓 T+N 天的实际表现 → 对比预测 → 提炼新观察 → 写入 rubric_notes.md。**只追加 `## 复盘` 段，绝不改预测段**。
+抓 T+N 天的实际表现 → 对比预测 → 提炼新观察 → 写入 rubric-memo.md。**只追加 `## 复盘` 段，绝不改预测段**。`rubric_notes.md` 是 blind 白名单，只能保存通用公式、维度定义和抽象规则，不能写入样本名、实绩、评论、链接或播放/阅读数。
 
 ## Overview
 
@@ -26,7 +26,7 @@ allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill
   ↓
 [Phase 5: 落盘（追加到 ## 复盘 段）]
   ↓
-[Phase 6: 写入 rubric_notes.md 的"观察记录"段]
+[Phase 6: 写入 rubric-memo.md 的"观察记录"段]
   ↓
 [Phase 7: 检测是否触发 bump 候选 → 提示用户跑 /cheat-bump]
 ```
@@ -48,7 +48,8 @@ allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill
 | 必填 | 来源 |
 |---|---|
 | `<prediction-file>` 或 `<video-folder>` | 用户参数；缺失则从 `.cheat-state.json` 的 `pending_retros[0]` |
-| `rubric_notes.md` | 用户项目根 |
+| `rubric_notes.md` | 用户项目根（只读，用于当前规则上下文；不得写入实绩观察） |
+| `rubric-memo.md` | 用户项目根（写入复盘观察、实绩证据、样本名与评论信号） |
 | `.cheat-state.json` | 状态文件 |
 
 ### 入参解析（同 cheat-predict 双形态接受）
@@ -156,12 +157,12 @@ allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill
 
 ### Phase 4: 提炼新观察（**两类，分别写入两个文件**）
 
-#### 4a. Rubric 观察（写入 rubric_notes.md）
+#### 4a. Rubric 观察（写入 rubric-memo.md）
 
 打分维度 / 公式 / bucket 边界相关的观察：
 
 ```markdown
-### 需要写进 rubric_notes.md 的新观察
+### 需要写进 rubric-memo.md 的新观察
 
 1. **ER 在情感向场景的真实权重应 ≥ ×2.0**：与谁问你了 6x 流量比是 v2 rubric 最强的反事实证据
 2. **议题分享冲动 (TS) 是隐藏维度**：joker / "她不一样" / 滤镜重构提供了安全的自嘲身份，转发不暴露处境，TS=5 的样本
@@ -227,17 +228,17 @@ Diff `scripts/<id>.md`（pre-shoot 草稿，可能是 cheat-seed 写或用户写
 ### 哪些预测被验证 / 推翻
 [Phase 3 内容]
 
-### 需要写进 rubric_notes.md 的新观察
+### 需要写进 rubric-memo.md 的新观察
 [Phase 4 内容]
 ```
 
 **写完后再次校验**：读取保存后的文件，对比**所有** `## 预测...` 段（v1 / v2 / legacy）的合并哈希应等于 Phase 0 cache 的合并哈希。**任一段被改 → 报错并回滚**。
 
-### Phase 6: 写入 rubric_notes.md + script_patterns.md
+### Phase 6: 写入 rubric-memo.md + script_patterns.md
 
-#### 6a. rubric_notes.md（Phase 4a 的输出）
+#### 6a. rubric-memo.md（Phase 4a 的输出）
 
-按 [observation-lifecycle.md](../../shared-references/observation-lifecycle.md) 的"观察记录模板"格式，追加到 `rubric_notes.md` 的 `## 观察记录` 段：
+按 [observation-lifecycle.md](../../shared-references/observation-lifecycle.md) 的 blind leak guard，追加到 `rubric-memo.md` 的 `## 观察记录` 段。这里可以包含真实样本名、实绩数据、评论关键词和链接；这些内容**绝不**写入 `rubric_notes.md`：
 
 ```markdown
 ### YYYY-MM-DD [标题简称] (id) — [一句话定性]
@@ -249,7 +250,7 @@ Diff `scripts/<id>.md`（pre-shoot 草稿，可能是 cheat-seed 写或用户写
 - 详见：[predictions/<file>.md]
 ```
 
-**检测跨样本 pattern**：扫描已有"观察记录"，看新观察是否与某条已有观察形成 ≥2 样本支持。命中则按 [observation-lifecycle.md](../../shared-references/observation-lifecycle.md) 升级到"重大跨视频观察"段。
+**检测跨样本 pattern**：扫描 `rubric-memo.md` 已有"观察记录"，看新观察是否与某条已有观察形成 ≥2 样本支持。命中则在 `rubric-memo.md` 升级到"重大跨样本观察"段。只有在后续 `/cheat-bump` 落地时，才把已验证的规律抽象成通用语言写入 `rubric_notes.md`。
 
 #### 6b. script_patterns.md（Phase 4b 的输出，**用户确认后才写**）
 
@@ -273,7 +274,7 @@ Diff `scripts/<id>.md`（pre-shoot 草稿，可能是 cheat-seed 写或用户写
 
 跨样本 pattern 升正式：扫描"新发现的 Pattern"段，看是否有 ≥2 样本支持同一现象 → 升到核心 pattern 库 + 删 "待验证" 标记。
 
-如用户在 Phase 4b 全否（"no"）→ 跳过 6b，rubric_notes.md 仍照写。
+如用户在 Phase 4b 全否（"no"）→ 跳过 6b，rubric-memo.md 仍照写。
 
 ### Phase 7: 检测 bump 触发
 

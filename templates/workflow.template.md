@@ -37,7 +37,7 @@ T+3 天 → /cheat-retro videos/<日期>_<id>_<short>/
    ├─ 抓数据 / 用户粘 → 写 videos/<id>/report.md
    ├─ 追加 ## 复盘 段到 predictions/<id>.md
    ├─ diff scripts/<id>.md vs videos/<id>/script.md → 学用户改稿 pattern
-   └─ 把新观察写入 rubric_notes.md / script_patterns.md
+   └─ 把新观察写入 rubric-memo.md / script_patterns.md（实绩只进 rubric-memo，不进 rubric_notes）
   ↓
 累计 ≥3 同向偏差 → /cheat-bump（升级 rubric）
 ```
