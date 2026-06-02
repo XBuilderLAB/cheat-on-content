@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://watcha.cn/products/cheat-on-content">
-    <img src="docs/guancha-no1.svg" alt="Watcha Hot List · 观猹热榜 · #1" width="340">
+    <img src="docs/guancha-no1.svg" alt="Watcha Hot List · 观猹热榜 · #1" width="328">
   </a>
 </p>
 
