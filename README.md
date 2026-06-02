@@ -22,6 +22,12 @@ Your doubt — predicted too.
 </p>
 
 <p align="center">
+  <a href="https://watcha.cn/products/cheat-on-content">
+    <img src="docs/guancha-no1.svg" alt="观猹热榜第一" width="300">
+  </a>
+</p>
+
+<p align="center">
 <a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-v0.1.0-orange" alt="Version"></a>
 &nbsp;
 <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
