@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 62" width="300" height="62" role="img" aria-label="观猹热榜 · 第一名">
-  <title>观猹热榜 · #1 热榜第一</title>
-  <rect stroke="#A87600" stroke-width="1.5" fill="#FFFFFF" x="0.75" y="0.75" width="298.5" height="60.5" rx="12"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 62" width="380" height="62" role="img" aria-label="Watcha Hot List · 观猹热榜 · #1 Trending · 热榜第一">
+  <title>Watcha Hot List · 观猹热榜 — #1 Trending · 热榜第一</title>
+  <rect stroke="#A87600" stroke-width="1.5" fill="#FFFFFF" x="0.75" y="0.75" width="378.5" height="60.5" rx="12"/>
 
   <!-- Laurel wreath (generic laurel-icon path, MIT, from upstream asset). -->
   <svg viewBox="0 0 80 80" width="50" height="46" x="14" y="9">
@@ -11,9 +11,9 @@
   <!-- "1" centered in wreath -->
   <text x="39" y="40" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#A87600" text-anchor="middle">1</text>
 
-  <!-- Top label -->
-  <text x="80" y="27" font-family="'PingFang SC','Microsoft YaHei',-apple-system,sans-serif" font-size="13" font-weight="400" fill="#A87600">观猹热榜</text>
+  <!-- Top label (English first, then Chinese) -->
+  <text x="80" y="27" font-family="Arial,'PingFang SC','Microsoft YaHei',sans-serif" font-size="13" font-weight="400" fill="#A87600">Watcha Hot List · 观猹热榜</text>
 
-  <!-- Main heading -->
-  <text x="80" y="49" font-family="'PingFang SC','Microsoft YaHei',-apple-system,sans-serif" font-size="20" font-weight="700" fill="#A87600">#1 热榜第一</text>
+  <!-- Main heading (English first, then Chinese) -->
+  <text x="80" y="49" font-family="Arial,'PingFang SC','Microsoft YaHei',sans-serif" font-size="20" font-weight="700" fill="#A87600">#1 Trending · 热榜第一</text>
 </svg>

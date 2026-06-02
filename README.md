@@ -5,6 +5,24 @@
 <h2 align="center">Cheat on Content</h2>
 
 <p align="center">
+  <strong>English</strong>
+  &nbsp;·&nbsp;
+  <a href="docs/README_CN.md"><strong>简体中文</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://watcha.cn/products/cheat-on-content">
+    <img src="docs/guancha-no1.svg" alt="Watcha Hot List · 观猹热榜 · #1" width="340">
+  </a>
+</p>
+
+<p align="center">
+<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-v0.1.0-orange" alt="Version"></a>
+&nbsp;
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+</p>
+
+<p align="center">
 For content creators — a skill that turns every post into a calibrated experiment.
 </p>
 
@@ -13,24 +31,6 @@ You're reading this. The skill predicted it.<br>
 It turns every "I feel this will go viral" into a calibrated experiment.<br>
 It took me from zero to 1M followers in a month. It said I'd write this. I did.<br>
 Your doubt — predicted too.
-</p>
-
-<p align="center">
-  <strong>English</strong>
-  &nbsp;·&nbsp;
-  <a href="docs/README_CN.md"><strong>简体中文</strong></a>
-</p>
-
-<p align="center">
-  <a href="https://watcha.cn/products/cheat-on-content">
-    <img src="docs/guancha-no1.svg" alt="观猹热榜第一" width="300">
-  </a>
-</p>
-
-<p align="center">
-<a href="CHANGELOG.md"><img src="https://img.shields.io/badge/version-v0.1.0-orange" alt="Version"></a>
-&nbsp;
-<a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
 </p>
 
 ---

@@ -5,6 +5,24 @@
 <h2 align="center">Cheat on Content</h2>
 
 <p align="center">
+  <a href="../README.md"><strong>English</strong></a>
+  &nbsp;·&nbsp;
+  <strong>简体中文</strong>
+</p>
+
+<p align="center">
+  <a href="https://watcha.cn/products/cheat-on-content">
+    <img src="guancha-no1.svg" alt="Watcha Hot List · 观猹热榜 · #1" width="340">
+  </a>
+</p>
+
+<p align="center">
+<a href="../CHANGELOG.md"><img src="https://img.shields.io/badge/version-v0.1.0-orange" alt="Version"></a>
+&nbsp;
+<a href="../LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+</p>
+
+<p align="center">
 网红作弊器 — 把每一条内容变成可校准的实验。
 </p>
 
@@ -13,24 +31,6 @@
 它把博主的每一次"我感觉这条会爆"变成可校准的实验。<br>
 我用它一个月涨粉 100w。它说我会写这段，我就写了。<br>
 你停下来思考"这是不是真的"——也在它的预测里。
-</p>
-
-<p align="center">
-  <a href="../README.md"><strong>English</strong></a>
-  &nbsp;·&nbsp;
-  <strong>简体中文</strong>
-</p>
-
-<p align="center">
-  <a href="https://watcha.cn/products/cheat-on-content">
-    <img src="guancha-no1.svg" alt="观猹热榜第一" width="300">
-  </a>
-</p>
-
-<p align="center">
-<a href="../CHANGELOG.md"><img src="https://img.shields.io/badge/version-v0.1.0-orange" alt="Version"></a>
-&nbsp;
-<a href="../LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
 </p>
 
 ---
