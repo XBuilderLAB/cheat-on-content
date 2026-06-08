@@ -1,7 +1,7 @@
 ---
 name: cheat-retro
-description: T+N 天数据回收 + 复盘 + 把实绩观察写入 rubric-memo.md。这是校准循环的反馈环节——不复盘的预测等于占星。触发词："复盘 [path]"/"retro this"/"T+3d 数据来了"/"抓数据 [path]"/"把这篇复盘了"。
-argument-hint: <prediction-file> [— window: 3|5|7] [— source: manual|adapter]
+description: 双档数据回收（T+3 + T+6）+ 复盘 + 轨迹类型判定 + 把实绩观察写入 rubric-memo.md。**T+3 抓第一次判定（算法初步判定窗口），T+6 抓第二次判定（二次爆发判定窗口）**——单 T+3 漏掉 ~50% 长尾型爆款数据。这是校准循环的反馈环节——不复盘的预测等于占星。触发词："复盘 [path]"/"复盘 T+6 [path]"/"retro this"/"T+3d 数据来了"/"T+6d 数据来了"/"抓数据 [path]"/"把这篇复盘了"。
+argument-hint: <prediction-file> [— window: 3|6|all] [— source: manual|adapter] [— trajectory: pulse|tail|flat|slow]
 allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill
 ---
 
@@ -31,9 +31,60 @@ allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill
 [Phase 7: 检测是否触发 bump 候选 → 提示用户跑 /cheat-bump]
 ```
 
+## 双档复盘工作流（T+3 + T+6）
+
+**为什么 T+3 不够**：抖音/快手类短视频的"二次分发"通常发生在 T+4~T+6 — 算法在 T+3 看到初步数据，**如果 T+3 数据超过同类 baseline，算法会把这视频塞进第二个更大的池子**。这个池子的反馈要再过 3 天才能看到，所以 T+6 才是"是否真的爆了"的判定点。
+
+```
+[用户发布视频]
+  ↓
+[T+1: 抓基础实绩 (封面点击/完播/5s 完播) — Phase 1 子步骤]
+  ↓
+[T+3: 复盘第 1 抓 — window: 3]
+   ├─ 写 report.md "## T+3 实绩" 段
+   ├─ 判定桶 (按 bucket_scheme)
+   └─ 轨迹类型预判 (基于 T+0~T+3 增量)
+  ↓
+[T+6: 复盘第 2 抓 — window: 6]
+   ├─ 追加 report.md "## T+6 实绩" 段 (不覆盖 T+3)
+   ├─ 修正桶判定 (T+3→T+6 倍数对比)
+   ├─ 确认轨迹类型: 脉冲/长尾/横盘/慢热
+   ├─ TRAJECTORY_WEIGHTS 应用到本次校准
+   └─ 触发 cheat-bump 提议时附 trajectory_type 字段
+  ↓
+[累计 ≥3 同向偏差 → /cheat-bump --trajectory-weight]
+```
+
+**两次复盘的差异**：
+| 维度 | T+3 复盘 | T+6 复盘 |
+|---|---|---|
+| 时机 | 必抓，第一次判定 | 必抓，第二次判定 |
+| 桶判定 | 初步 (可能低估) | 修正 (含二次爆发) |
+| 轨迹类型 | 预判 | 确认 |
+| 校准权重 | 1.0× | 按 trajectory_type 加权 (0.5/1.0/1.5/2.0) |
+| bump 触发 | 暂缓 (单档信号) | 启用 (双档信号) |
+
+**实现细节**：
+- T+3 复盘时创建 report.md，写 `## T+3 实绩` 段，标 `window: 3`
+- T+6 复盘时检测 report.md 已有 T+3 段，**追加** `## T+6 实绩` 段，**不覆盖** T+3 数据
+- 两次复盘都写 prediction 文件的 `## 复盘` 段（v1 → v2 增量模式）
+- cheat-bump 校准时按 trajectory_type 权重计算 pool weighted composite
+
 ## Constants
 
-- **RETRO_WINDOW_DAYS = 3** — 默认 T+3d。短视频快平台可设 1，长文设 7
+- **RETRO_WINDOWS = [3, 6]** — **双档必抓**：T+3 = 算法初步判定窗口，T+6 = 二次爆发判定窗口
+  - 单 T+3 漏掉 ~50% 长尾型爆款数据（实战案例：T+3 5.6w → T+6 11.4w 翻倍）
+  - 长视频/长文平台可加 T+14 为第三档（衰减跟踪）
+  - 调用 `/cheat-retro <file> — window: 3` 走单档；默认走双档
+- **RETRO_WINDOW_DAYS = 3** — 旧版单档常量，保留向后兼容
+- **TRAJECTORY_TYPES = ["脉冲型", "长尾型", "横盘型", "慢热型"]** — T+3→T+6 增量判定的轨迹类型
+  - 脉冲型：T+6 衰减到 T+3 的 <0.5× (一次性爆款)
+  - 长尾型：T+6 增长到 T+3 的 >1.5× (二次分发，**最常见爆款形态**)
+  - 横盘型：T+6 在 T+3 的 0.5-1.5× 之间 (中规中矩)
+  - 慢热型：T+6 略增但未破圈 (罕见，算法慢慢认)
+- **TRAJECTORY_WEIGHTS = {脉冲型: 0.5, 横盘型: 1.0, 长尾型: 2.0, 慢热型: 1.5}** — cheat-bump 校准权重
+  - 长尾型权重 2x (更接近稳态播放)
+  - 脉冲型权重 0.5x (一次性数据，不可预测稳定表现)
 - **DATA_SOURCE = manual** — manual: 用户粘数字；adapter: 调对应平台 adapter（需配置）
 - **AUTO_PROPOSE_BUMP = true** — Claude 判断是否系统性偏差时自动提议 /cheat-bump
   - **默认参考**：连续 ≥3 次同向偏差（high/low）→ 提议
@@ -41,7 +92,10 @@ allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill
   - **也可以更晚**：3 次同向但每次偏差都很小（<25%），可能只是噪声不是系统性
 - **TOP_COMMENTS_N = 20** — 抓 / 粘 top N 高赞评论
 
-> 💡 调用时覆盖：`/cheat-retro <file> — window: 7 — source: adapter`
+> 💡 调用时覆盖：
+> - `/cheat-retro <file> — window: 3` 走单 T+3
+> - `/cheat-retro <file> — window: all` 走双档 T+3 + T+6 (默认)
+> - `/cheat-retro <file> — window: 3,6,14` 走三档 (长视频适用)
 
 ## Inputs
 
@@ -342,6 +396,9 @@ Diff `scripts/<id>.md`（pre-shoot 草稿，可能是 cheat-seed 写或用户写
 3. **观察可追溯**。每条新观察引用具体数据点
 4. **不在复盘里 bump**。Phase 7 只**提议** bump，实际升级走 `/cheat-bump`——避免一次操作做两件事
 5. **早复盘标记**。RETRO_WINDOW_DAYS 不到就复盘 → state file 记 `early_retro: true`，bump 时这种样本权重降级
+6. **T+3 → T+6 不覆盖**。第二次复盘必须**追加**到 report.md，**不可覆盖**第一次的实绩段。`data_source: window:3` 标签保留
+7. **轨迹类型必填**。每次复盘必须判定 trajectory_type (脉冲/长尾/横盘/慢热)，写进 prediction 的复盘段 + state file
+8. **轨迹类型权重应用到 bump**。cheat-bump 校准池按 trajectory_type 加权 (脉冲 0.5× / 横盘 1.0× / 慢热 1.5× / 长尾 2.0×)
 
 ## Refusals
 
@@ -357,3 +414,41 @@ Diff `scripts/<id>.md`（pre-shoot 草稿，可能是 cheat-seed 写或用户写
 - 状态字段更新：`calibration_samples` +1（这是 cheat-status 显示进度的关键）
 - pending_retros：剔除本条
 - 与 [observation-lifecycle.md](../../shared-references/observation-lifecycle.md) 紧耦合：每次复盘是观察新增的入口
+
+## 轨迹类型判定细则
+
+判定时机：T+6 复盘时基于 T+3→T+6 倍数 + 单日播放形态综合判定。
+
+```python
+def trajectory_type(t3, t6, t3_to_t6_curve):
+    """
+    t3: T+3 累计播放
+    t6: T+6 累计播放
+    t3_to_t6_curve: list of daily delta [d4, d5, d6]
+    """
+    ratio = t6 / t3 if t3 > 0 else float("inf")
+    d4, d5, d6 = t3_to_t6_curve
+    is_secondary_surge = d5 > d4 * 1.5 or d6 > d5 * 1.5
+
+    if ratio < 0.5:
+        return "脉冲型"  # 衰减
+    if ratio > 1.5 and is_secondary_surge:
+        return "长尾型"  # 二次爆发
+    if 0.8 <= ratio <= 1.5:
+        return "横盘型"
+    if 1.5 <= ratio and not is_secondary_surge:
+        return "慢热型"
+    return "横盘型"  # 兜底
+```
+
+**实战识别信号**（cheat-retro Phase 4 时 Claude 应主动询问用户）：
+- 封面点击率持续涨 (>3pp from T+3 to T+6) → 长尾型
+- 5s 完播率下降 (>3pp from T+3 to T+6) → 进新流量池 (长尾/大爆预兆)
+- 单日播放峰值在 T+0~T+1 → 脉冲型
+- 单日播放峰值在 T+4~T+6 → 长尾型
+
+**跟 cheat-bump 的协作**：
+- 校准池按 trajectory_type 加权 (TRAJECTORY_WEIGHTS)
+- 长尾型样本**对 AB / HP / QL 维度信号最强**（算法二次分发 = 内容质量好）
+- 脉冲型样本**对 NA / ER 维度信号最强**（开头炸 = 钩子强）
+- 横盘型样本**对 AB 维度信号强**（稳定受众）
