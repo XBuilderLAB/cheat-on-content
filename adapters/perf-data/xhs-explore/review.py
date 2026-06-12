@@ -326,7 +326,8 @@ def _summarize(notes: list[dict]) -> str:
 async def run_summarize(out_dir: Path) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     print("[summarize] 拉取创作者中心最近 50 条笔记……")
-    sess = await crawler.Session.open()
+    # summarize 是批量后台命令，用 headless 避免弹窗打扰
+    sess = await crawler.Session.open(headless=True)
     try:
         notes = await crawler.fetch_recent_notes(sess, limit=50)
     finally:
