@@ -176,6 +176,10 @@ async def fetch_recent_notes(sess: Session, limit: int = 50) -> list[dict]:
     try:
         await page.goto(CREATOR_NOTE_MANAGER, wait_until="domcontentloaded", timeout=60000)
         await asyncio.sleep(8)
+        # cookie 过期时会被 302 到登录页
+        if "login" in page.url or "redirectReason=401" in page.url:
+            print("[登录] 创作者中心已跳转登录页，cookie 可能已过期。请运行：python crawler.py login")
+            return []
         for _ in range(4):
             await page.evaluate("window.scrollBy(0, 1200)")
             await asyncio.sleep(1.5)
