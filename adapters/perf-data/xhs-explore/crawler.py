@@ -131,24 +131,43 @@ async def _acquire_web_session(page: Page) -> None:
         pass
 
 
-async def ensure_login(timeout_s: int = 300) -> bool:
-    """扫码登录创作者中心；检测到创作者登录态后顺便换取 web_session，然后自动关闭。"""
+async def ensure_login(timeout_s: int = 180, max_refresh: int = 5) -> bool:
+    """扫码登录创作者中心；检测到创作者登录态后顺便换取 web_session，然后自动关闭。
+
+    二维码本身会过期，所以用 timeout_s 作为单次等待上限，超时后自动刷新页面重新出码，
+    最多刷新 max_refresh 次。用户有充足时间扫码。
+    """
     sess = await Session.open()
     try:
         page = await sess.ctx.new_page()
         await page.goto(CREATOR_HOME)
-        print(f"[登录] 在弹出的 Chromium 窗口里扫码登录小红书创作者中心。最多等 {timeout_s} 秒……")
-        for i in range(timeout_s):
-            try:
-                if await _creator_logged_in(sess.ctx) and "login" not in page.url:
-                    print(f"[登录] ✓ 创作者中心登录态已确认（用时 {i}s）")
-                    await _acquire_web_session(page)
-                    await asyncio.sleep(1)
-                    return True
-            except Exception:
-                pass
-            await asyncio.sleep(1)
-        print("[登录] 超时未检测到登录态。")
+        print(f"[登录] 在弹出的 Chromium 窗口里扫码登录小红书创作者中心。每次二维码有效期约 {timeout_s} 秒，超时自动刷新。")
+
+        for refresh in range(max_refresh + 1):
+            for i in range(timeout_s):
+                try:
+                    if await _creator_logged_in(sess.ctx) and "login" not in page.url:
+                        print(f"[登录] ✓ 创作者中心登录态已确认（总用时 {refresh * timeout_s + i}s）")
+                        await _acquire_web_session(page)
+                        await asyncio.sleep(1)
+                        return True
+                except Exception:
+                    pass
+
+                # 每 30 秒提醒一次，避免用户以为卡死
+                if i > 0 and i % 30 == 0:
+                    print(f"[登录] 已等待 {i} 秒，请用小红书 App 扫码（或等待自动刷新二维码）……")
+
+                await asyncio.sleep(1)
+
+            if refresh < max_refresh:
+                print(f"[登录] 本次二维码未扫码或已过期，正在刷新页面重新出码（第 {refresh + 1}/{max_refresh} 次刷新）……")
+                try:
+                    await page.reload(wait_until="domcontentloaded", timeout=30000)
+                except Exception:
+                    await page.goto(CREATOR_HOME)
+
+        print("[登录] 超过最大刷新次数仍未检测到登录态，已停止。如需继续请重新运行本命令。")
         return False
     finally:
         await sess.close()
