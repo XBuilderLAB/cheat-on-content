@@ -9,14 +9,22 @@
 - 创作者**自己的**笔记数据走 galaxy 接口（不需要 xsec_token），是最稳的主路。
 - 评论走前台 web API（需要 xsec_token），让页面自己导航触发带 token 的请求；
   拿不到就优雅降级（report.md 标 comments_unavailable，cheat-retro 回落到 manual 粘评论）。
+
+本文件新增的能力（来自 xhs-analytics 的公开页解析）：
+- fetch_public_note: 无登录解析 explore 页面 __INITIAL_STATE__，拿正文 / 图片 / 标签。
+- fetch_public_comments: 公开页兜底 top 评论。
+- download_image: 下载笔记图片到本地。
 """
 from __future__ import annotations
 
 import asyncio
 import json
+import re
+import urllib.parse
 from pathlib import Path
 from typing import Any
 
+import requests
 from playwright.async_api import BrowserContext, Page, Response, async_playwright
 from paths import auth_dir, debug_dir
 
@@ -35,6 +43,11 @@ GALAXY_NOTE_STATS_KEYS = (
 FEED_KEY = "/api/sns/web/v1/feed"
 COMMENT_KEY = "/api/sns/web/v2/comment/page"
 
+DEFAULT_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+)
+
 
 class Session:
     """单浏览器会话，按顺序跑多步抓取。"""
@@ -48,12 +61,22 @@ class Session:
         pw = await async_playwright().start()
         auth_path = auth_dir()
         auth_path.mkdir(parents=True, exist_ok=True)
-        ctx = await pw.chromium.launch_persistent_context(
-            user_data_dir=str(auth_path),
-            headless=headless,
-            viewport={"width": 1440, "height": 900},
-            args=["--disable-blink-features=AutomationControlled"],
-        )
+        common_kwargs = {
+            "user_data_dir": str(auth_path),
+            "headless": headless,
+            "viewport": {"width": 1440, "height": 900},
+            "args": ["--disable-blink-features=AutomationControlled"],
+        }
+        try:
+            ctx = await pw.chromium.launch_persistent_context(**common_kwargs)
+        except Exception as exc:
+            # 部分环境只装了系统 Chrome，没下载 Playwright Chromium，fallback 到 channel=chrome
+            try:
+                ctx = await pw.chromium.launch_persistent_context(
+                    **common_kwargs, channel="chrome"
+                )
+            except Exception:
+                raise exc
         return cls(ctx, pw)
 
     async def close(self) -> None:
@@ -247,7 +270,213 @@ def _to_int(x: Any) -> int:
         return 0
 
 
-async def fetch_note_frontend(sess: Session, note_id: str, note_url: str | None = None) -> dict:
+# ---------------------------------------------------------------------------
+# 公开页解析（来自 xhs-analytics 的核心能力）：无登录拿正文、图片、标签、评论兜底
+# ---------------------------------------------------------------------------
+
+def _extract_initial_state(html: str) -> dict | None:
+    """从小红书 explore 页面 HTML 中解析 window.__INITIAL_STATE__。"""
+    marker = "window.__INITIAL_STATE__="
+    start = html.find(marker)
+    if start == -1:
+        return None
+    script_start = html.rfind("<script", 0, start)
+    script_end = html.find("</script>", start)
+    if script_start == -1 or script_end == -1:
+        return None
+    script = html[script_start:script_end]
+    assign_start = script.find(marker) + len(marker)
+    json_str = script[assign_start:]
+    json_str = re.sub(r":\s*undefined\s*([,}\]])", r":null\1", json_str)
+    try:
+        return json.loads(json_str)
+    except Exception:
+        return None
+
+
+def _image_url(img: dict) -> str:
+    """从 imageList 元素中提取可用的图片 URL。"""
+    if not isinstance(img, dict):
+        return ""
+    for key in ("urlDefault", "url"):
+        if img.get(key):
+            return img[key]
+    for info in img.get("infoList", []) or []:
+        if isinstance(info, dict) and info.get("imageScene") == "WB_DFT" and info.get("url"):
+            return info["url"]
+    for info in img.get("infoList", []) or []:
+        if isinstance(info, dict) and info.get("url"):
+            return info["url"]
+    return ""
+
+
+def _xsec_token_from_url(url: str | None) -> str:
+    """从笔记 URL 的 query 中拆出 xsec_token（保留原编码）。"""
+    if not url:
+        return ""
+    parsed = urllib.parse.urlparse(url)
+    return urllib.parse.unquote(urllib.parse.parse_qs(parsed.query).get("xsec_token", [""])[0])
+
+
+def fetch_public_note(note_id: str, xsec_token: str) -> dict:
+    """无登录抓取 explore 公开页，解析 __INITIAL_STATE__。
+
+    返回 dict：success, note_id, title, desc/body, images, tags, time, counts, raw。
+    """
+    token = urllib.parse.unquote(xsec_token)
+    url = (
+        f"https://www.xiaohongshu.com/explore/{note_id}"
+        f"?xsec_token={urllib.parse.quote(token)}"
+        f"&xsec_source=pc_creatormng"
+    )
+    headers = {
+        "User-Agent": DEFAULT_USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    }
+    r = requests.get(url, headers=headers, timeout=20)
+    r.raise_for_status()
+
+    state = _extract_initial_state(r.text)
+    if not state:
+        raise ValueError("无法解析页面初始状态")
+
+    note_detail_map = state.get("note", {}).get("noteDetailMap", {})
+    if note_id not in note_detail_map:
+        raise ValueError("页面未返回该笔记数据")
+
+    raw = note_detail_map[note_id]
+    note = raw.get("note", {})
+    interact = note.get("interactInfo", {})
+
+    return {
+        "success": True,
+        "note_id": note_id,
+        "title": note.get("title", ""),
+        "desc": note.get("desc", ""),
+        "body": note.get("desc", ""),
+        "type": note.get("type", ""),
+        "time": note.get("time", 0),
+        "images": [_image_url(img) for img in note.get("imageList", [])],
+        "tags": [tag.get("name", "") for tag in note.get("tagList", []) if tag.get("name")],
+        "counts": {
+            "liked": _to_int(interact.get("likedCount")),
+            "collected": _to_int(interact.get("collectedCount")),
+            "comment": _to_int(interact.get("commentCount")),
+            "shared": _to_int(interact.get("shareCount")),
+        },
+        "raw": raw,
+    }
+
+
+def _normalize_public_comment(c: dict) -> dict:
+    """把 __INITIAL_STATE__ / edith 接口里的评论字段统一成 adapter 格式。"""
+    user = c.get("user_info") or c.get("userInfo") or {}
+    like_count = c.get("like_count") or c.get("likeCount") or 0
+    sub_count = c.get("sub_comment_count") or c.get("subCommentCount") or 0
+    return {
+        "cid": str(c.get("id") or c.get("comment_id") or ""),
+        "text": c.get("content") or "",
+        "like_count": _to_int(like_count),
+        "sub_comment_count": _to_int(sub_count),
+        "create_time": c.get("create_time") or c.get("createTime") or 0,
+        "user_name": user.get("nickname") or "",
+        "ip_label": c.get("ip_location") or c.get("ipLocation") or "",
+    }
+
+
+def fetch_public_comments(note_id: str, xsec_token: str, max_comments: int = 20) -> list[dict]:
+    """公开页 __INITIAL_STATE__ 兜底 top 评论（通常 ~10 条）。"""
+    token = urllib.parse.unquote(xsec_token)
+    url = (
+        f"https://www.xiaohongshu.com/explore/{note_id}"
+        f"?xsec_token={urllib.parse.quote(token)}"
+        f"&xsec_source=pc_creatormng"
+    )
+    headers = {
+        "User-Agent": DEFAULT_USER_AGENT,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+    }
+    r = requests.get(url, headers=headers, timeout=20)
+    r.raise_for_status()
+    state = _extract_initial_state(r.text)
+    if not state:
+        return []
+
+    raw = state.get("note", {}).get("noteDetailMap", {}).get(note_id, {})
+    comments = []
+    # __INITIAL_STATE__ 里的评论路径可能是 comments.list 或 commentsList
+    for key in ("comments", "commentsList"):
+        container = raw.get(key) if isinstance(raw, dict) else None
+        if isinstance(container, dict):
+            arr = container.get("list") or container.get("comments") or []
+            if isinstance(arr, list):
+                comments.extend([_normalize_public_comment(c) for c in arr])
+        elif isinstance(container, list):
+            comments.extend([_normalize_public_comment(c) for c in container])
+
+    seen = set()
+    dedup = []
+    for c in comments:
+        if not c["cid"] or c["cid"] in seen:
+            continue
+        seen.add(c["cid"])
+        dedup.append(c)
+    dedup.sort(key=lambda x: x["like_count"], reverse=True)
+    return dedup[:max_comments]
+
+
+async def download_image(url: str, dest: Path, timeout: int = 30) -> bool:
+    """下载单张图片到 dest（会根据 Content-Type 修正扩展名）。异步封装。"""
+    if not url:
+        return False
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+
+    def _download() -> bool:
+        headers = {
+            "User-Agent": DEFAULT_USER_AGENT,
+            "Accept": "image/webp,image/apng,image/*,*/*;q=0.8",
+            "Referer": "https://www.xiaohongshu.com/",
+        }
+        r = requests.get(url, headers=headers, timeout=timeout, stream=True)
+        r.raise_for_status()
+
+        parsed = urllib.parse.urlparse(url)
+        path = urllib.parse.unquote(parsed.path)
+        ext = Path(path).suffix.lower()
+        if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif", ".avif"}:
+            ct = r.headers.get("Content-Type", "").lower()
+            if "webp" in ct:
+                ext = ".webp"
+            elif "png" in ct:
+                ext = ".png"
+            elif "gif" in ct:
+                ext = ".gif"
+            else:
+                ext = ".jpg"
+        dest_final = dest.with_suffix(ext)
+
+        with open(dest_final, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+        return True
+
+    try:
+        return await asyncio.to_thread(_download)
+    except Exception as exc:
+        print(f"[下载图片] 失败 {url}: {exc}")
+        return False
+
+
+async def fetch_note_frontend(
+    sess: Session,
+    note_id: str,
+    note_url: str | None = None,
+    xsec_token: str | None = None,
+) -> dict:
     """打开前台笔记页 → 拦截 feed（interact_info 确认字段）+ comment/page。
 
     前台需要 xsec_token + 登录态（web_session）。
@@ -255,6 +484,8 @@ async def fetch_note_frontend(sess: Session, note_id: str, note_url: str | None 
       → 直接用它导航，最稳。
     - 否则退回裸 explore URL（仅对已登录账号访问自己笔记可能可行）。
     token 缺失 / 未登录 → dump 并降级（评论留给 manual）。
+
+    拦截不到评论时，会用公开页 __INITIAL_STATE__ 里的 top 评论兜底。
     """
     feed: dict = {}
     comments: list[dict] = []
@@ -305,6 +536,20 @@ async def fetch_note_frontend(sess: Session, note_id: str, note_url: str | None 
             else:
                 stagnant = 0
                 last = cur
+
+        # 兜底：公开页 __INITIAL_STATE__ 里的 top 评论
+        if not comments:
+            xsec = xsec_token or _xsec_token_from_url(note_url)
+            if xsec:
+                try:
+                    public_comments = await asyncio.to_thread(
+                        fetch_public_comments, note_id, xsec, max_comments=20
+                    )
+                    if public_comments:
+                        comments = public_comments
+                        print(f"       公开页兜底 {len(comments)} 条评论")
+                except Exception as exc:
+                    print(f"[诊断] 公开页评论兜底失败：{exc}")
 
         if not comments:
             dbg = debug_dir()
@@ -389,8 +634,29 @@ def _dump(urls: list[str], url_file: str, captured: list[dict], cap_file: str) -
         pass
 
 
+def _merge_public_note(note: dict, public: dict) -> None:
+    """用公开页数据补全 note（不覆盖已有的 galaxy 运营数据）。"""
+    if not public.get("success"):
+        return
+    for key in ("title", "desc", "body", "type", "images", "tags"):
+        if public.get(key) and not note.get(key):
+            note[key] = public[key]
+    if public.get("time") and not note.get("create_time"):
+        note["create_time"] = _to_int(public["time"])
+    counts = public.get("counts") or {}
+    mapping = {
+        "like_count": counts.get("liked"),
+        "collect_count": counts.get("collected"),
+        "comment_count": counts.get("comment"),
+        "share_count": counts.get("shared"),
+    }
+    for k, v in mapping.items():
+        if v and not note.get(k):
+            note[k] = _to_int(v)
+
+
 async def fetch_all(note_id: str, note_url: str | None = None) -> dict:
-    """一个会话跑完笔记列表（含 galaxy 指标）+ 前台 interact + 评论。"""
+    """一个会话跑完笔记列表（含 galaxy 指标）+ 前台 interact + 评论 + 公开页正文/图片兜底。"""
     sess = await Session.open()
     try:
         print("  → 打开创作者中心，拉笔记列表 + 运营数据")
@@ -408,8 +674,19 @@ async def fetch_all(note_id: str, note_url: str | None = None) -> dict:
             front_url = (f"https://www.xiaohongshu.com/explore/{note_id}"
                          f"?xsec_token={note['xsec_token']}&xsec_source=pc_creatormng")
 
+        xsec = _xsec_token_from_url(front_url) or note.get("xsec_token", "")
+
+        # 先用公开页补正文/图片/标签（无登录、低成本），不覆盖 galaxy 已确认的计数
+        if xsec:
+            try:
+                public = await asyncio.to_thread(fetch_public_note, note_id, xsec)
+                _merge_public_note(note, public)
+                print("       ✓ 公开页正文/图片/标签已补全")
+            except Exception as exc:
+                print(f"[诊断] 公开页兜底失败：{exc}")
+
         print("  → 打开前台笔记页抓 interact + 评论")
-        front = await fetch_note_frontend(sess, note_id, note_url=front_url)
+        front = await fetch_note_frontend(sess, note_id, note_url=front_url, xsec_token=xsec)
         # 前台 interact 字段是确认的——用它补全/覆盖 galaxy 里可能缺的计数
         for k in ("like_count", "collect_count", "comment_count", "share_count"):
             if front["interact"].get(k):
