@@ -8,6 +8,20 @@ All notable changes to cheat-on-content will be documented here.
 
 ## [Unreleased]
 
+### Added — xhs-explore adapter: 公开页兜底、正文/图片归档、账号汇总
+
+- 融合 [xhs-analytics](https://github.com/SingularGuyLeBorn/xhs-analytics) 的公开页解析能力：
+  - `crawler.fetch_public_note()` 无登录解析 `window.__INITIAL_STATE__`，补全正文、图片 URL、标签。
+  - `crawler.fetch_public_comments()` 当前台 API 拿不到评论时，用公开页 top 评论兜底（通常 ~10 条）。
+  - `crawler.download_image()` 异步下载笔记图片。
+- `review.py` 新增子命令：
+  - `archive <notes.json> [output_root] [limit]`：批量归档已发布笔记正文与图片。
+  - `summarize [out_dir]`：基于创作者中心最近 50 条 + 公开页标签生成账号级汇总。
+- `review.py note` 支持环境变量 `XHS_DOWNLOAD_IMAGES=1` 下载图片到 `videos/<...>/images/`。
+- `renderer.py` 在 `report.md` 中新增「正文 + 标签」与「图片」块。
+- `requirements.txt` 增加 `requests>=2.28`。
+- `Session.open()` 在未下载 Playwright Chromium 时自动 fallback 到系统 Chrome（`channel="chrome"`）。
+
 ### Added — 受众画像 persona（cheat-persona skill + audience.md）
 
 **动机**：用户选题 / 写稿时缺一个清晰的"谁在看"的镜子。新增受众画像功能——从复盘评论数据聚类出账号真实受众。

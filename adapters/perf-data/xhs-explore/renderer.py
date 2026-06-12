@@ -41,6 +41,11 @@ def _ratio(num, denom) -> str:
     return f"{num/denom*100:.2f}%"
 
 
+def _escape_md(text: str) -> str:
+    """轻度转义，避免正文里的 # 被误认为标题。"""
+    return text.replace("\n", "  \n").replace("#", "\\#")
+
+
 def render_report(note: dict, script: str, comments: list[dict]) -> str:
     lines: list[str] = []
     title = note.get("title") or "(无标题)"
@@ -67,6 +72,29 @@ def render_report(note: dict, script: str, comments: list[dict]) -> str:
     if note.get("fans_inc"):
         lines.append(f"- 涨粉：{_fmt_num(note.get('fans_inc'))}")
     lines.append("")
+
+    # 正文 + 标签（公开页兜底时才有）
+    body = note.get("body") or note.get("desc") or ""
+    tags = note.get("tags") or []
+    if body or tags:
+        lines.append("## 正文")
+        lines.append("")
+        if tags:
+            lines.append(" ".join(f"#{t}" for t in tags))
+            lines.append("")
+        lines.append(_escape_md(body) if body else "（无）")
+        lines.append("")
+
+    # 图片（本地优先，否则用 URL）
+    image_paths = note.get("image_paths") or []
+    image_urls = note.get("images") or []
+    images = image_paths or image_urls
+    if images:
+        lines.append("## 图片")
+        lines.append("")
+        for i, img in enumerate(images, 1):
+            lines.append(f"![图片{i}]({img})")
+        lines.append("")
 
     # galaxy 原始 JSON——首跑时用来确认曝光字段的真实 key 名
     raw = note.get("raw")
