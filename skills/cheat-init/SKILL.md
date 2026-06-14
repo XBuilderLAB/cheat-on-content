@@ -263,6 +263,21 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
 
 按顺序创建并**解释每一项的作用**：
 
+0. **`.gitignore`（安全 — 必须第一步创建）**
+   ```
+   "先创建 .gitignore，把账号凭证挡在版本控制外——这是第一件事。
+    .auth/ 和 .auth-xhs/ 存的是抖音 / 小红书的登录态（等同账号密码），
+    .cheat-secrets.json 存 API key / cookie——一旦被 commit 或云同步就等于泄露账号。
+    注意：predictions/ videos/ scripts/ 这些**不**忽略——原则 #1/#3 依赖
+    git history 作为预测的不可变档案，必须入库。"
+   ```
+   - 复制 `cheat-on-content/templates/gitignore.template` → `<user-repo>/.gitignore`
+   - 如 `<user-repo>/.gitignore` **已存在** → 不覆盖；逐行检查并**追加缺失行**，至少确保
+     `.auth/`、`.auth-xhs/`、`.cheat-secrets.json` 三行存在
+   - 即使用户项目当前**还不是 git 仓库**也照常创建——它会在用户 `git init` 的那一刻立即生效
+   - 创建后提醒一句：如果项目已经 `git init` 过且可能误加过 `.auth/`，让用户跑
+     `git rm -r --cached .auth .auth-xhs .cheat-secrets.json` 把已暂存的凭证移出
+
 1. **`.cheat-state.json`**
    ```
    "正在创建 .cheat-state.json — 各子 skill 共享上下文的地方。
