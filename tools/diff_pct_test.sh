@@ -31,7 +31,7 @@ if [[ ! -f "$DIFF_PCT" ]]; then
 fi
 
 TMP=$(mktemp -d)
-trap "rm -rf $TMP" EXIT
+trap 'rm -rf "$TMP"' EXIT
 
 PASS=0
 FAIL=0

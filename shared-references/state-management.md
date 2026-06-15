@@ -157,7 +157,7 @@
 |---|---|---|---|---|
 | `consecutive_directional_errors` | array of "high"/"low" | cheat-retro（push） / cheat-bump（清空） | cheat-status / cheat-retro 自检 | 最近 N 次复盘的偏差方向；连续 3 同向触发 bump 提议 |
 | `pending_retros` | array of file path | cheat-publish（push） / cheat-retro（remove） | cheat-status | 等待复盘的预测文件路径 |
-| `shoots` | array of {video_folder, prediction_file, shot_at, ad_hoc} | cheat-shoot（push） / cheat-publish（remove） | cheat-status / cheat-recommend / SessionStart hook | 已拍未发队列。`len(shoots) = buffer count`，`buffer_days = buffer × target_publish_cadence_days` 决定颜色 |
+| `shoots` | array of {video_folder, prediction_file, shot_at, ad_hoc, scripts_path, script_consistency, script_diff_pct, v2_prediction_written, script_hash_at_shoot} | cheat-shoot（push） / cheat-publish（remove） | cheat-status / cheat-recommend / SessionStart hook | 已拍未发队列。`len(shoots) = buffer count`，`buffer_days = buffer × target_publish_cadence_days` 决定颜色。v1.2 新增字段语义见 cheat-shoot Phase 4 |
 
 ### 会话状态
 

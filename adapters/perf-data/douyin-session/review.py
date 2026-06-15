@@ -118,6 +118,9 @@ def main() -> None:
         asyncio.run(crawler.ensure_login())
         return
     if len(sys.argv) > 1 and sys.argv[1] == "video":
+        if len(sys.argv) < 3:
+            print("用法：python review.py video <aweme_id> [script.txt]")
+            sys.exit(2)
         aweme_id = sys.argv[2]
         script_path = sys.argv[3] if len(sys.argv) > 3 else None
         asyncio.run(run_with_id(aweme_id, script_path))

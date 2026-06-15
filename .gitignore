@@ -17,6 +17,14 @@ __pycache__/
 venv/
 .python-version
 
+# Secrets / environment
+.env
+.env.*
+
+# SQLite databases
+*.sqlite
+*.sqlite3
+
 # 用户项目数据（万一开发者在 cheat-on-content 源码目录里跑了 cheat-init）
 # 这些文件应该在用户自己的 content project 里，不该污染源码 repo
 .cheat-state.json

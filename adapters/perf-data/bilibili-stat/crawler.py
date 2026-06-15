@@ -37,7 +37,9 @@ def _client() -> httpx.Client:
 
 def fetch_video(client: httpx.Client, bvid: str) -> dict:
     """拉视频信息 + 统计。返回归一化后的 dict。"""
-    j = client.get(VIEW_API, params={"bvid": bvid}).json()
+    resp = client.get(VIEW_API, params={"bvid": bvid})
+    resp.raise_for_status()
+    j = resp.json()
     if j.get("code") != 0:
         raise RuntimeError(f"view 接口失败 code={j.get('code')} msg={j.get('message')}")
     d = j.get("data") or {}
@@ -118,7 +120,11 @@ def fetch_all(bvid: str, max_comments: int = 50) -> dict:
         video = fetch_video(client, bvid)
         print(f"       ✓ {video['title'][:40]}（播放 {video['play_count']}）")
         print("  → 拉取热门评论")
-        comments = fetch_comments(client, video["aid"], max_count=max_comments)
+        if video.get("aid") is None:
+            print("[警告] 视频数据缺少 aid 字段，无法拉取评论")
+            comments = []
+        else:
+            comments = fetch_comments(client, video["aid"], max_count=max_comments)
         print(f"       ✓ {len(comments)} 条评论")
     return {"video": video, "comments": comments}
 

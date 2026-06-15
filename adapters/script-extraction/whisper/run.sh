@@ -79,7 +79,7 @@ echo "[whisper] engine: $ENGINE | model: $MODEL | lang: $LANG"
 echo "[whisper] transcribing: $VIDEO"
 
 TMP_OUT=$(mktemp -d)
-trap "rm -rf $TMP_OUT" EXIT
+trap 'rm -rf "$TMP_OUT"' EXIT
 
 # Transcribe — get raw text output
 if [[ "$ENGINE" == "whisper-cpp" ]]; then

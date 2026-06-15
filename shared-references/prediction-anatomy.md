@@ -98,7 +98,7 @@
 这是 immutable 段的核心。`hooks/prediction-immutability.sh` 拦截这段往后到下一个 `##` 的所有 Edit。
 
 ```markdown
-## 预测
+## 预测 v1
 
 **Bucket**: `30-100w`
 

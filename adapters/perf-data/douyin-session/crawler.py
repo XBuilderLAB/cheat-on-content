@@ -136,6 +136,16 @@ def _parse_video_list(captured: list[dict], limit: int) -> list[dict]:
     return dedup[:limit]
 
 
+def _pick(primary: dict, fallback: dict, key: str, default=0):
+    v = primary.get(key)
+    if v is not None:
+        return v
+    v = fallback.get(key)
+    if v is not None:
+        return v
+    return default
+
+
 def _normalize_video(v: dict) -> dict:
     aweme_id = v.get("aweme_id") or v.get("item_id") or v.get("id") or ""
     stats = v.get("statistics") or v.get("stats") or {}
@@ -145,11 +155,11 @@ def _normalize_video(v: dict) -> dict:
         "desc": v.get("desc") or v.get("title") or "",
         "create_time": v.get("create_time") or v.get("createTime") or 0,
         "duration_ms": video_info.get("duration") or v.get("duration") or 0,
-        "play_count": stats.get("play_count") or v.get("play_count") or 0,
-        "digg_count": stats.get("digg_count") or v.get("digg_count") or 0,
-        "comment_count": stats.get("comment_count") or v.get("comment_count") or 0,
-        "share_count": stats.get("share_count") or v.get("share_count") or 0,
-        "collect_count": stats.get("collect_count") or v.get("collect_count") or 0,
+        "play_count": _pick(stats, v, "play_count"),
+        "digg_count": _pick(stats, v, "digg_count"),
+        "comment_count": _pick(stats, v, "comment_count"),
+        "share_count": _pick(stats, v, "share_count"),
+        "collect_count": _pick(stats, v, "collect_count"),
         "raw": v,
     }
 
@@ -366,7 +376,7 @@ async def fetch_comments(sess: Session, aweme_id: str, max_pages: int = 60) -> l
 def _normalize_comment(c: dict) -> dict:
     user = c.get("user") or {}
     return {
-        "cid": c.get("cid") or "",
+        "cid": str(c.get("cid") or c.get("id") or id(c)),
         "text": c.get("text") or "",
         "digg_count": c.get("digg_count") or 0,
         "reply_comment_total": c.get("reply_comment_total") or 0,

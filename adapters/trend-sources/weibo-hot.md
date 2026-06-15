@@ -28,7 +28,7 @@ fetch(limit: int = 50) -> List[Candidate]
 返回符合 [shared-references/candidate-schema.md](../../shared-references/candidate-schema.md) 的 items 列表。
 
 字段映射：
-- `id`：`sha256("trend|" + normalized_title)[:12]`
+- `id`：`sha256("weibo-hot|" + normalized_title + "|" + url_path)[:12]`
 - `title`：热搜词
 - `source`：`"trend:weibo-hot"`
 - `snapshot_text`：热搜词 + （如有）官方标签 + 简短摘要（自动从热搜详情页抓 1-2 句）

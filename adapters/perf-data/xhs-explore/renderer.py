@@ -102,7 +102,11 @@ def render_report(note: dict, script: str, comments: list[dict]) -> str:
         lines.append("### galaxy 原始字段（首跑校准用，确认曝光字段 key 后可忽略）")
         lines.append("")
         lines.append("```json")
-        lines.append(json.dumps(raw, ensure_ascii=False, indent=2)[:2500])
+        full = json.dumps(raw, ensure_ascii=False, indent=2)
+        truncated = full[:2500]
+        if len(full) > 2500:
+            truncated += "\n... (truncated)"
+        lines.append(truncated)
         lines.append("```")
         lines.append("")
 

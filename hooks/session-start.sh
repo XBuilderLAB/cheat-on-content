@@ -18,6 +18,15 @@
 
 set -uo pipefail
 
+# Portable ISO-8601 timestamp → epoch converter (works on both GNU/Linux and BSD/macOS)
+parse_iso_epoch() {
+  local input="${1%%+*}"  # strip timezone suffix like +08:00
+  input="${input%%Z}"     # strip Z suffix
+  date -d "$input" "+%s" 2>/dev/null \
+    || date -j -f "%Y-%m-%dT%H:%M:%S" "$input" "+%s" 2>/dev/null \
+    || echo 0
+}
+
 PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
 STATE_FILE="$PROJECT_DIR/.cheat-state.json"
 
@@ -68,9 +77,7 @@ fi
 self_scored_warning=""
 if [[ "$last_prediction_self_scored" == "true" && -n "$last_self_scored_at" ]]; then
   # Parse timestamp; tolerate +08:00 or Z suffix
-  self_scored_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${last_self_scored_at%%+*}" "+%s" 2>/dev/null || \
-                      date -j -f "%Y-%m-%dT%H:%M:%SZ" "$last_self_scored_at" "+%s" 2>/dev/null || \
-                      echo 0)
+  self_scored_epoch=$(parse_iso_epoch "$last_self_scored_at")
   if [[ $self_scored_epoch -gt 0 ]]; then
     days_since=$(( (now_epoch - self_scored_epoch) / 86400 ))
     if [[ $days_since -ge 7 ]]; then
@@ -103,7 +110,8 @@ if [[ "$target_cadence" == "null" ]] || [[ -z "$target_cadence" ]]; then
   # Flexible cadence: no color, just count
   buffer_label="📦 Buffer: ${buffer_count} 篇 (灵活节奏，无警戒)"
 else
-  buffer_days=$(( buffer_count * target_cadence ))
+  target_cadence_int=${target_cadence%%.*}
+  buffer_days=$(( buffer_count * target_cadence_int ))
   if   [[ $buffer_days -lt 1 ]]; then
     buffer_label="📦 Buffer: ${buffer_count} 篇 🔴 红 (按 cadence ${target_cadence}d = <1 天预备)"
     buffer_warning="🚨 buffer 警戒：下个发布日可能断更。今天必须拍 ≥1 条稳分。"
@@ -128,7 +136,7 @@ if [[ "$pending_retros_count" -gt 0 ]]; then
     if [[ -f "$pred_path" ]]; then
       pub_iso=$(grep -E '^\*\*Published at\*\*:' "$pred_path" 2>/dev/null | head -1 | sed -E 's/.*: *//')
       if [[ -n "$pub_iso" ]]; then
-        pub_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${pub_iso%%+*}" "+%s" 2>/dev/null || echo 0)
+        pub_epoch=$(parse_iso_epoch "$pub_iso")
         if [[ $pub_epoch -gt 0 ]]; then
           age_days=$(( (now_epoch - pub_epoch) / 86400 ))
           if [[ $age_days -ge $retro_window ]]; then
@@ -173,7 +181,7 @@ fi
 # --- Last trends run ---
 trends_label=""
 if [[ -n "$last_trends_at" ]]; then
-  trends_epoch=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${last_trends_at%%+*}" "+%s" 2>/dev/null || echo 0)
+  trends_epoch=$(parse_iso_epoch "$last_trends_at")
   if [[ $trends_epoch -gt 0 ]]; then
     days_ago=$(( (now_epoch - trends_epoch) / 86400 ))
     trends_label="📅 上次抓热点: ${days_ago} 天前"

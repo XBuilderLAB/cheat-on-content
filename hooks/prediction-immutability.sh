@@ -106,10 +106,10 @@ if [[ "$tool_name" == "Edit" ]]; then
   # Check whether old_string appears inside the prediction section.
   # We use grep -F (literal) on a temporary file because old_string may contain regex chars.
   pred_tmp=$(mktemp)
+  trap "rm -f '$pred_tmp'" EXIT
   printf '%s' "$prediction_section" > "$pred_tmp"
 
   if grep -qF -- "$old_string" "$pred_tmp" 2>/dev/null; then
-    rm -f "$pred_tmp"
     cat >&2 <<EOF
 
 [cheat-on-content] 🚫 BLOCKED: edit targets the '## 预测' / '## Prediction' section of:
@@ -133,7 +133,6 @@ EOF
     exit 1
   fi
 
-  rm -f "$pred_tmp"
   exit 0
 fi
 

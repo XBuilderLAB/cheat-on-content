@@ -85,7 +85,7 @@ rubric_lines = wc -l rubric_notes.md
 8. **calibration_samples 跨入新 confidence 等级**（0→1, 2→3, 5→6, 10→11, 20→21）→ 提示"🎉 confidence 升级：<旧等级> → <新等级>。bucket 中枢精度从 ±X% 提到 ±Y%"。**仅作通知，无任何用户必须确认的操作**——所有 skill 都已经按 calibration_samples 自动调整
 9. **calibration_samples 跨过 5** → "你的 rubric 形态可以第一次正式 bump 了。回顾 rubric_notes.md 看观察记录段是否有 ≥3 样本支持的 pattern → 跑 /cheat-bump"
 10. **calibration_samples 跨过 10** → "可以跑 /cheat-bump --bucket-only --scheme percentile 让 bucket 边界改用 percentile（永远自洽）"
-11. **calibration_samples 跨过 SQLITE_UPGRADE_THRESHOLD** 且 data_layer=markdown → "建议跑 tools/md-to-sqlite.py"
+11. **calibration_samples 跨过 SQLITE_UPGRADE_THRESHOLD** 且 data_layer=markdown → "建议跑 tools/md-to-sqlite.py"（planned — batch 3, not yet available）
 12. **rubric_notes.md 行数 > CLEANUP_LINE_THRESHOLD** → "建议清算观察段（手动或下次 bump 触发）"
 13. **calibration_samples ≥ 5 + pool_status=none** → "可以开始建立选题池了"
 14. **calibration_samples ≥ 15 + pool_status=none** → "强烈建议建池：/cheat-trends 或手动建 candidates.md"

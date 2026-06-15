@@ -70,7 +70,7 @@
 
 ---
 
-### [tier2] 弗洛伊德的性压抑哲学
+### [tier1] 弗洛伊德的性压抑哲学
 
 - **id**: 8c4d92e1f0b3
 - **source**: trend:manual-paste

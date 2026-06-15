@@ -60,7 +60,11 @@ def render_report(
         lines.append("```json")
         import json
         for item in detail_captured[:3]:
-            lines.append(json.dumps(item["data"], ensure_ascii=False, indent=2)[:2000])
+            full = json.dumps(item["data"], ensure_ascii=False, indent=2)
+            truncated = full[:2000]
+            if len(full) > 2000:
+                truncated += "\n... (truncated)"
+            lines.append(truncated)
         lines.append("```")
         lines.append("")
 

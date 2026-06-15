@@ -26,10 +26,6 @@ import crawler
 import renderer
 from paths import runtime_project_root, videos_dir
 
-# Windows Git Bash 等默认 GBK 控制台，emoji/中文 print 会崩溃，强制 UTF-8 输出
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
-
 
 LOG_FILE: io.TextIOWrapper | None = None
 
@@ -166,82 +162,84 @@ async def run_archive(input_path: Path, output_root: Path, limit: int | None = N
     output_root.mkdir(parents=True, exist_ok=True)
     log_path = output_root / f"archive_{time.strftime('%Y%m%d_%H%M%S')}.log"
     LOG_FILE = open(log_path, "w", encoding="utf-8", errors="replace")
-    _log(f"启动归档: input={input_path}, output={output_root}")
+    try:
+        _log(f"启动归档: input={input_path}, output={output_root}")
 
-    notes = json.loads(input_path.read_text(encoding="utf-8"))
-    if not isinstance(notes, list):
-        raise ValueError("输入 JSON 必须是笔记列表")
+        notes = json.loads(input_path.read_text(encoding="utf-8"))
+        if not isinstance(notes, list):
+            raise ValueError("输入 JSON 必须是笔记列表")
 
-    notes = sorted(notes, key=lambda x: x.get("time", ""), reverse=True)
-    if limit:
-        notes = notes[:limit]
+        notes = sorted(notes, key=lambda x: x.get("time", ""), reverse=True)
+        if limit:
+            notes = notes[:limit]
 
-    results: list[dict] = []
-    for i, note in enumerate(notes, 1):
-        note_id = note.get("id") or note.get("note_id")
-        xsec = note.get("xsecToken") or note.get("xsec_token", "")
-        title = note.get("title", "")
-        if not note_id or not xsec:
-            results.append({
-                "success": False,
-                "note_id": note_id,
-                "error": "缺少 note_id 或 xsec_token",
-            })
-            continue
-
-        out_dir = output_root / note_id
-        _log(f"({i}/{len(notes)}) 归档 {note_id} {title[:30]}...")
-        try:
-            public = await asyncio.to_thread(crawler.fetch_public_note, note_id, xsec)
-            if not public.get("success"):
-                err = public.get("error", "公开页解析失败")
-                _log(f"  -> 失败: {err}")
-                results.append({"success": False, "note_id": note_id, "error": err})
+        results: list[dict] = []
+        for i, note in enumerate(notes, 1):
+            note_id = note.get("id") or note.get("note_id")
+            xsec = note.get("xsecToken") or note.get("xsec_token", "")
+            title = note.get("title", "")
+            if not note_id or not xsec:
+                results.append({
+                    "success": False,
+                    "note_id": note_id,
+                    "error": "缺少 note_id 或 xsec_token",
+                })
                 continue
 
-            if max_comments > 0:
-                comments = await asyncio.to_thread(
-                    crawler.fetch_public_comments, note_id, xsec, max_comments
+            out_dir = output_root / note_id
+            _log(f"({i}/{len(notes)}) 归档 {note_id} {title[:30]}...")
+            try:
+                public = await asyncio.to_thread(crawler.fetch_public_note, note_id, xsec)
+                if not public.get("success"):
+                    err = public.get("error", "公开页解析失败")
+                    _log(f"  -> 失败: {err}")
+                    results.append({"success": False, "note_id": note_id, "error": err})
+                    continue
+
+                if max_comments > 0:
+                    comments = await asyncio.to_thread(
+                        crawler.fetch_public_comments, note_id, xsec, max_comments
+                    )
+                    public["comments"] = comments
+                    public["comments_fetched"] = len(comments)
+
+                out_dir.mkdir(parents=True, exist_ok=True)
+                (out_dir / "note_detail.json").write_text(
+                    json.dumps(public, ensure_ascii=False, indent=2), encoding="utf-8"
                 )
-                public["comments"] = comments
-                public["comments_fetched"] = len(comments)
 
-            out_dir.mkdir(parents=True, exist_ok=True)
-            (out_dir / "note_detail.json").write_text(
-                json.dumps(public, ensure_ascii=False, indent=2), encoding="utf-8"
-            )
+                img_dir = out_dir / "images"
+                img_dir.mkdir(parents=True, exist_ok=True)
+                img_count = 0
+                for idx, url in enumerate(public.get("images", []), 1):
+                    if await crawler.download_image(url, img_dir / f"{idx:02d}"):
+                        img_count += 1
 
-            img_dir = out_dir / "images"
-            img_dir.mkdir(parents=True, exist_ok=True)
-            img_count = 0
-            for idx, url in enumerate(public.get("images", []), 1):
-                if await crawler.download_image(url, img_dir / f"{idx:02d}"):
-                    img_count += 1
+                summary = {
+                    "success": True,
+                    "note_id": note_id,
+                    "output_dir": str(out_dir),
+                    "image_count": img_count,
+                    "comment_count": public.get("comments_fetched", 0),
+                }
+                _log(f"  -> 完成: 图片 {img_count} 张")
+                results.append(summary)
+            except Exception as e:
+                _log(f"  -> 异常: {e}")
+                results.append({"success": False, "note_id": note_id, "error": str(e)})
 
-            summary = {
-                "success": True,
-                "note_id": note_id,
-                "output_dir": str(out_dir),
-                "image_count": img_count,
-                "comment_count": public.get("comments_fetched", 0),
-            }
-            _log(f"  -> 完成: 图片 {img_count} 张")
-            results.append(summary)
-        except Exception as e:
-            _log(f"  -> 异常: {e}")
-            results.append({"success": False, "note_id": note_id, "error": str(e)})
+            if i < len(notes):
+                await asyncio.sleep(0.5)
 
-        if i < len(notes):
-            await asyncio.sleep(0.5)
-
-    summary_path = output_root / f"archive_summary_{time.strftime('%Y%m%d_%H%M%S')}.json"
-    summary_path.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
-    success = sum(1 for r in results if r.get("success"))
-    _log(f"完成: 成功 {success}, 失败 {len(results) - success}, 总计 {len(results)}")
-    _log(f"汇总: {summary_path}")
-    if LOG_FILE is not None:
-        LOG_FILE.close()
-        LOG_FILE = None
+        summary_path = output_root / f"archive_summary_{time.strftime('%Y%m%d_%H%M%S')}.json"
+        summary_path.write_text(json.dumps(results, ensure_ascii=False, indent=2), encoding="utf-8")
+        success = sum(1 for r in results if r.get("success"))
+        _log(f"完成: 成功 {success}, 失败 {len(results) - success}, 总计 {len(results)}")
+        _log(f"汇总: {summary_path}")
+    finally:
+        if LOG_FILE is not None:
+            LOG_FILE.close()
+            LOG_FILE = None
 
 
 # ---------------------------------------------------------------------------
@@ -363,10 +361,17 @@ def _usage() -> str:
 
 
 def main() -> None:
+    # Windows Git Bash 等默认 GBK 控制台，emoji/中文 print 会崩溃，强制 UTF-8 输出
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
     if len(sys.argv) > 1 and sys.argv[1] == "login":
         asyncio.run(crawler.ensure_login())
         return
     if len(sys.argv) > 1 and sys.argv[1] == "note":
+        if len(sys.argv) < 3:
+            print("用法：python review.py note <note_id> [script.txt]")
+            sys.exit(2)
         note_id = sys.argv[2]
         script_path = sys.argv[3] if len(sys.argv) > 3 else None
         asyncio.run(run_with_id(note_id, script_path))

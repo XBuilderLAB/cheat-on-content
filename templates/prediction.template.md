@@ -24,6 +24,9 @@
   ← 例：`AB: claude=4 → user=3 (用户认为 '一人公司题没那么普适')` `中枢: claude=60w → user=40w`
   ← 复盘时这个字段帮诊断：用户哪个维度直觉跟 Claude 系统性偏离，被实绩验证 → rubric 可能漏了什么
 **预测时数据状态**: **blind**（未看任何 `<平台>` 实际播放数据）
+**Prediction Basis**: `pre_shoot`  ← 或 `post_shoot_pre_publish`（v2 段）
+**BlindScored By**: `subagent-v1`  ← 或 `main-claude-self` / `mixed`
+**BlindScore Disagreement**: `<inline JSON — 每维度一条，见 prediction-anatomy.md>`
 
 ---
 
@@ -43,7 +46,7 @@
 
 ---
 
-## 预测
+## 预测 v1
 
 > ⚠️ **本段是 immutable**——`hooks/prediction-immutability.sh` 会拦截对本段的 Edit。
 > 写完不可改。如要重做请创建 `<本文件名>_redo.md`，原文件保留。

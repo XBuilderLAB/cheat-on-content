@@ -38,7 +38,7 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, WebFetch, Skill
 - **AUTO_SCORE = true** — 抓回来后自动调 cheat-score 粗打分
 - **MIN_COMPOSITE_TO_SUGGEST = 6.0** — 低于此分的不推荐用户加入候选池（仍写入 trends-history 避免下次重复推）
 
-> 💡 调用时覆盖：`/cheat-trends — sources: manual-paste,hackernews,bilibili-popular — max-per: 10`
+> 💡 调用时覆盖：`/cheat-trends — sources: manual-paste,aihot,weibo-hot — max-per: 10`
 
 ## Inputs
 
@@ -66,17 +66,15 @@ enabled_adapters = args.sources or state.get('enabled_trend_sources', ['manual-p
 你目前没有启用任何热点源。
 
 最快配法：
-- 临时跑：/cheat-trends — sources: manual-paste,hackernews
+- 临时跑：/cheat-trends — sources: manual-paste,aihot
 - 永久启用：编辑 .cheat-state.json 的 enabled_trend_sources 数组
 
 可用 adapter（详见 adapters/trend-sources/）：
 - manual-paste（默认，永远能用）
-- hackernews（HN Algolia API，无需 key）
-- reddit-rising（公开 .json 端点）
-- youtube-trending（需 YouTube Data API key）
-- bilibili-popular（公开端点，偶有变动）
-- xhs-explore / douyin-hot（fragile，需 cookie）
-- thirdparty-paid（新榜 / 飞瓜，需自己接 API）
+- aihot（AI 热点聚合，无需 key）
+- weibo-hot（微博热搜，无需 key）
+- zhihu-hot（知乎热榜，无需 key）
+- trendradar-mcp（TrendRadar MCP 服务，需配置）
 ```
 
 ### Phase 1-2: 对每个 adapter 调 fetch + normalize
@@ -86,21 +84,19 @@ enabled_adapters = args.sources or state.get('enabled_trend_sources', ['manual-p
 | Adapter | 实现机制 |
 |---|---|
 | `manual-paste` | 询问用户："粘贴你今天的候选 URL/标题列表（每行一条）" → 解析每行，对 URL 做 WebFetch 拓展 snippet |
-| `hackernews` | WebFetch HN Algolia API：`https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage={N}` → 提取 title/url/snippet |
-| `reddit-rising` | WebFetch Reddit JSON：`https://www.reddit.com/r/<subreddit>/rising.json?limit={N}` |
-| `youtube-trending` | 需 API key 配置在 `.env` 或 .cheat-state.json，调 YouTube Data API v3 `videos?chart=mostPopular` |
-| `bilibili-popular` | WebFetch B 站 popular 接口 |
-| `xhs-explore` / `douyin-hot` | 需用户提供 cookie 路径，调对应 platform-stub 描述的接口；缺 cookie → skip 该 adapter |
-| `thirdparty-paid` | schema only——读 `adapters/trend-sources/thirdparty-paid.md`，让用户自己接 |
+| `aihot` | 读 adapters/trend-sources/aihot.md 描述的 fetch 接口 |
+| `weibo-hot` | 读 adapters/trend-sources/weibo-hot.md 描述的 fetch 接口 |
+| `zhihu-hot` | 读 adapters/trend-sources/zhihu-hot.md 描述的 fetch 接口 |
+| `trendradar-mcp` | 读 adapters/trend-sources/trendradar-mcp.md 描述的 fetch 接口 |
 
 每个 adapter 输出符合 [candidate-schema.md](../../shared-references/candidate-schema.md) 的 items。
 
 **优雅降级**：单 adapter 失败（API key 缺失 / 端点 503 / cookie 失效）→ skip 该 adapter，**不抛异常**，在汇总里说明：
 ```
-✅ hackernews: 拉到 18 条
-⚠️  youtube-trending: 跳过（缺 API key——配置见 adapters/trend-sources/youtube-trending.md）
-✅ bilibili-popular: 拉到 15 条
-❌ douyin-hot: 跳过（cookie 文件不存在）
+✅ aihot: 拉到 18 条
+✅ weibo-hot: 拉到 15 条
+✅ zhihu-hot: 拉到 12 条
+⚠️  trendradar-mcp: 跳过（MCP 服务未配置——配置见 adapters/trend-sources/trendradar-mcp.md）
 ```
 
 ### Phase 3: 去重
@@ -133,17 +129,17 @@ enabled_adapters = args.sources or state.get('enabled_trend_sources', ['manual-p
 ```
 🔥 抓热点完成。各源拉取统计：
 - manual-paste: 5 条（用户输入）
-- hackernews: 18 条
-- bilibili-popular: 15 条
-跳过 douyin-hot（缺 cookie）
+- aihot: 18 条
+- weibo-hot: 15 条
+跳过 trendradar-mcp（MCP 服务未配置）
 
 去重后剩 27 条新 item。
 粗打分后 12 条 composite ≥ 6.0：
 
 | # | 标题 | source | composite | bucket | rationale |
 |---|---|---|---|---|---|
-| 1 | 为什么我们都讨厌主动联系朋友 | hackernews | 8.4 | 30-100w | ER+QL 双 5，AB 普适 |
-| 2 | "她不一样"的一千种变体 | bilibili-popular | 8.1 | 30-100w | MS 候选维度高 |
+| 1 | 为什么我们都讨厌主动联系朋友 | aihot | 8.4 | 30-100w | ER+QL 双 5，AB 普适 |
+| 2 | "她不一样"的一千种变体 | weibo-hot | 8.1 | 30-100w | MS 候选维度高 |
 | 3 | ...... |
 
 哪些加入 candidates.md？

@@ -7,9 +7,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PROJECT_DIR}/.cheat-hooks/log-event.sh tool_use",
-            "timeout": 5,
-            "async": true
+            "command": "bash ${CLAUDE_PROJECT_DIR}/.cheat-hooks/log-event.sh tool_use &",
+            "timeout": 5
           }
         ]
       }
@@ -20,9 +19,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PROJECT_DIR}/.cheat-hooks/log-event.sh user_prompt",
-            "timeout": 5,
-            "async": true
+            "command": "bash ${CLAUDE_PROJECT_DIR}/.cheat-hooks/log-event.sh user_prompt &",
+            "timeout": 5
           }
         ]
       }
@@ -33,9 +31,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PROJECT_DIR}/.cheat-hooks/log-event.sh session_start",
-            "timeout": 5,
-            "async": true
+            "command": "bash ${CLAUDE_PROJECT_DIR}/.cheat-hooks/log-event.sh session_start &",
+            "timeout": 5
           }
         ]
       }
@@ -46,9 +43,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash ${CLAUDE_PROJECT_DIR}/.cheat-hooks/log-event.sh session_end",
-            "timeout": 5,
-            "async": true
+            "command": "bash ${CLAUDE_PROJECT_DIR}/.cheat-hooks/log-event.sh session_end &",
+            "timeout": 5
           }
         ]
       }

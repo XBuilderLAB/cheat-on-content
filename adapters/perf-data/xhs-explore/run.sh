@@ -32,7 +32,15 @@ ADAPTER_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd 
 
 # Find Python — prefer venv in user's project root if exists
 PYTHON=""
-PROJECT_ROOT="$( dirname "$( dirname "$( realpath "$VIDEO_FOLDER" )" )" )"
+# Walk up from VIDEO_FOLDER to find project root (.cheat-state.json)
+PROJECT_ROOT="$( realpath "$VIDEO_FOLDER" )"
+while [[ "$PROJECT_ROOT" != "/" && ! -f "$PROJECT_ROOT/.cheat-state.json" ]]; do
+  PROJECT_ROOT="$( dirname "$PROJECT_ROOT" )"
+done
+if [[ ! -f "$PROJECT_ROOT/.cheat-state.json" ]]; then
+  echo "❌ Cannot find project root (.cheat-state.json) from $VIDEO_FOLDER" >&2
+  exit 3
+fi
 if [[ -x "$PROJECT_ROOT/.venv/bin/python" ]]; then
   PYTHON="$PROJECT_ROOT/.venv/bin/python"
 elif [[ -x "$PROJECT_ROOT/.venv/Scripts/python.exe" ]]; then

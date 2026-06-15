@@ -95,7 +95,7 @@ allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill
 |---|---|---|
 | `douyin` | `adapters/perf-data/douyin-session/` | `bash <adapters-dir>/douyin-session/run.sh <aweme_id> <video_folder>` |
 | `xhs` | `adapters/perf-data/xhs-explore/` | `bash <adapters-dir>/xhs-explore/run.sh <note_id> <video_folder>` |
-| `youtube` | `adapters/perf-data/youtube-data-api/`（待） | 调 YouTube Data API（需 API key） |
+| `youtube` | `adapters/perf-data/youtube-data-api/`（planned — batch 3, not yet available） | 调 YouTube Data API（需 API key） |
 | `bilibili` | `adapters/perf-data/bilibili-stat/` | `bash <adapters-dir>/bilibili-stat/run.sh <bvid> <video_folder>` |
 | 其他 | 无 adapter | 优雅降级到 Path A |
 

@@ -30,6 +30,11 @@ input=$(cat 2>/dev/null || echo "{}")
 # Build a compact event record. Best-effort jq parse — if it fails we still log a minimal record.
 ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
+case "$event_type" in
+  tool_use|user_prompt|session_start|session_end) ;;
+  *) event_type="unknown" ;;
+esac
+
 if command -v jq >/dev/null 2>&1; then
   # Extract a few standard fields if present
   event_json=$(printf '%s' "$input" | jq -c --arg ts "$ts" --arg type "$event_type" '

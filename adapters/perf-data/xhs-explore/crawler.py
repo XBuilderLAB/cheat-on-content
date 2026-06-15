@@ -251,12 +251,10 @@ def _parse_note_list(captured: list[dict], limit: int) -> list[dict]:
 
 def _first(d: dict, *keys: str) -> Any:
     for k in keys:
-        v = d.get(k)
-        if v not in (None, "", 0):
-            return v
-    # 再扫一遍允许 0（区分"字段不存在"和"值为 0"）
+        if k in d and d[k] is not None and d[k] != "":
+            return d[k]
     for k in keys:
-        if k in d:
+        if k in d and d[k] is not None:
             return d[k]
     return 0
 
@@ -311,6 +309,7 @@ def _extract_initial_state(html: str) -> dict | None:
     assign_start = script.find(marker) + len(marker)
     json_str = script[assign_start:]
     json_str = re.sub(r":\s*undefined\s*([,}\]])", r":null\1", json_str)
+    json_str = json_str.rstrip().rstrip(';').rstrip()
     try:
         return json.loads(json_str)
     except Exception:

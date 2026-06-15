@@ -28,7 +28,7 @@ fetch(limit: int = 50) -> List[Candidate]
 返回符合 [shared-references/candidate-schema.md](../../shared-references/candidate-schema.md) 的 items 列表。
 
 字段映射：
-- `id`：`sha256("trend|" + normalized_title)[:12]`
+- `id`：`sha256("zhihu-hot|" + normalized_title + "|" + url_path)[:12]`
 - `title`：知乎问题标题
 - `source`：`"trend:zhihu-hot"`
 - `snapshot_text`：问题标题 + 高赞答案前 200 字摘要（可选——抓不到就只用标题）

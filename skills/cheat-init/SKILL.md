@@ -240,9 +240,9 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, WebFetch, Skill
 
 你能找一个对标账号吗？至少 3 条该账号的视频。
 
-  - 你**完全没发过历史**（Q2=a/b）→ **强烈建议**——rubric 没 anchor 全靠对标。
+  - 你**完全没发过历史**（Q2=a）→ **强烈建议**——rubric 没 anchor 全靠对标。
     不找的话用通用 v0 等权 rubric，前 5 篇精度更差更久
-  - 你**已发历史**（Q2=c）→ **可选**——你也可以只用自己历史 calibrate；
+  - 你**已发历史**（Q2=b）→ **可选**——你也可以只用自己历史 calibrate；
     但建议至少导 1 个对标做 sanity check（看你账号是否真的偏离对标方向）
 
 a) 现在找 → 立刻进入 /cheat-learn-from（5-15 分钟，看你材料准备程度）
@@ -495,7 +495,7 @@ cheat-learn-from 完成后回到 init 的 Phase 5。
 
 | 字段 | 写入时机 | 来源 |
 |---|---|---|
-| `schema_version` | Phase 3 | 硬编码 "1.1" |
+| `schema_version` | Phase 3 | 硬编码 "1.4" |
 | `skill_version` | Phase 3 | 硬编码 "1.0.0" |
 | `rubric_version` | Phase 3 | "v0" |
 | `content_form` | Phase 3 | Q1 → 查映射表换 enum 值（**不是字母**） |
