@@ -319,7 +319,10 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
     只能含通用语言（公式 / 维度定义 / bucket 边界），不能含真实视频名 / 实绩。
     每次 bump 升级时的 Memo（含证据数据 + 派生证据）写到 rubric-memo.md（下一步创建）。"
    ```
-   - 复制 `cheat-on-content/starter-rubrics/<form>-zero.md`（cold-start）或 `<form>.md`（已有数据时仍可参考）
+   - starter 选择规则：
+     - `content_form=opinion-video` → 复制 `starter-rubrics/opinion-video-zero.md`（cold-start）或参考 `opinion-video.md`
+     - `content_form=short-text` 且 `enabled_perf_adapters` 含 `xhs-explore` → 复制 `starter-rubrics/xhs-post-zero.md`（cold-start）或参考 `xhs-post.md`
+     - 其他形态暂没有内置 starter → 询问用户是否先复制 `opinion-video-zero.md` 作为占位并在顶部标 `rubric_form_mismatch: true`，或让用户提供自定义 rubric
 
 2.5. **`rubric-memo.md`**（**新**——配合 cheat-score-blind 隔离协议）
    ```

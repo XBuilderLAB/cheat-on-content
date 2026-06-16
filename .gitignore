@@ -8,6 +8,9 @@ Icon?
 # Claude Code per-user config (含本地路径 / 个人 permission grants)
 # 整个 .claude/ 目录在源码 repo 里都是本地状态——hooks/settings 的项目级配置走用户自己的 content project 不走这里
 .claude/
+.codex/
+.gemini/
+.playwright-mcp/
 
 # Python (whisper adapter / score-curve.py 跑过留下的)
 __pycache__/
@@ -25,12 +28,16 @@ venv/
 .cheat-secrets.json
 predictions/
 videos/
+articles/
+xhs/
 scripts/
 samples/
 candidates.md
 rubric_notes.md
+rubric-memo.md
 script_patterns.md
 benchmark.md
+audience.md
 STATUS.md
 WORKFLOW.md
 content.db

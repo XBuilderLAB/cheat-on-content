@@ -35,6 +35,8 @@ allowed-tools: Bash(*), Read, Edit, Glob
 | `<prediction-file>` 或 URL | 用户参数；缺失则用 `.cheat-state.json` 的 `in_progress_session.file` |
 | `.cheat-state.json` | 用户项目根 |
 
+内容形态判断：读取 `.cheat-state.json.content_form`。`opinion-video` 走视频 folder + buffer；`long-essay` / `short-text` / `other` 等非视频形态不要求 `/cheat-shoot`。
+
 ## Workflow
 
 ### Phase 0: 找到对应的预测文件
@@ -89,11 +91,16 @@ allowed-tools: Bash(*), Read, Edit, Glob
 
 如果用户给的是分享短链（无法立刻 resolve）→ 标 `Aweme ID: pending`，下次 `/cheat-retro` 时由 adapter 解析。
 
-**video folder 处理**：到 cheat-publish 这一步，对应的 `videos/<id>/` 目录**应该已经由 cheat-shoot 创建**（含 script.md）。
+**artifact folder 处理**：
 
-- 如 video folder 不存在 → 警告"你跳过了 cheat-shoot？建议先跑 cheat-shoot 把拍摄稿登记进 video folder 再发"，**询问用户是否跳过登记直接发**：
-  - 是 → 自动建一个 video folder（fallback），但不询问稿子一致性，标 `ad_hoc_publish: true`
-  - 否 → 让用户先跑 cheat-shoot 再回来 publish
+- `content_form=opinion-video`：对应的 `videos/<id>/` 目录**应该已经由 cheat-shoot 创建**（含 script.md）。
+  - 如 video folder 不存在 → 警告"你跳过了 cheat-shoot？建议先跑 cheat-shoot 把拍摄稿登记进 video folder 再发"，**询问用户是否跳过登记直接发**：
+    - 是 → 自动建一个 video folder（fallback），但不询问稿子一致性，标 `ad_hoc_publish: true`
+    - 否 → 让用户先跑 cheat-shoot 再回来 publish
+- 非视频：**不要要求 cheat-shoot**。
+  - `long-essay` → 如 `articles/<id>/` 不存在，直接创建；建议把终稿放到 `draft.md`。
+  - `short-text` 且平台为 xhs → 如 `xhs/<id>/` 不存在，直接创建；建议把终稿放到 `post.md`，图片放到 `images/`。
+  - 其他形态 → 不强制 artifact folder；有需要时用 `<platform>/<id>/` 或让用户确认。
 
 用 Edit 工具（不是 Write 重写整个文件）。
 
@@ -106,7 +113,8 @@ allowed-tools: Bash(*), Read, Edit, Glob
   "in_progress_session": null,
   "last_published_at": "<ISO timestamp>",
   "last_published_file": "predictions/<filename>",
-  "last_published_video_folder": "videos/<...>/",
+  "last_published_video_folder": "videos/<...>/ 或 null",
+  "last_published_artifact_folder": "videos|articles|xhs/<...>/",
   "last_published_platform_id": "<aweme_id 或 BV 号 等>",
   "pending_retros": [
     "predictions/<filename>"
@@ -117,10 +125,11 @@ allowed-tools: Bash(*), Read, Edit, Glob
 }
 ```
 
-**`shoots` 队列处理**（buffer 跟踪关键）：
-1. 读 state.shoots[]
+**`shoots` 队列处理**（仅视频，buffer 跟踪关键）：
+1. `content_form=opinion-video` 时读 state.shoots[]
 2. 找 `video_folder == 本次发布的 video_folder` 的项 → 移除
 3. 如果没找到 → 警告"buffer 队列里没有这条视频。是直接发布没经过 /cheat-shoot 吗？"——不阻塞，但提示用户下次走 /cheat-shoot 让 buffer 跟踪准确
+4. 非视频内容不读写 shoots，也不输出 buffer 警告
 
 `last_published_platform_id` 是 cheat-retro 调 adapter 时的输入——如 douyin-session 需要 aweme_id 直接抓数据。
 
@@ -134,7 +143,7 @@ allowed-tools: Bash(*), Read, Edit, Glob
    - Platform: douyin
    - URL: https://v.douyin.com/abc123
 
-📦 Buffer：N 篇（颜色 + 含义）
+📦 Buffer：N 篇（颜色 + 含义；仅视频显示）
    按你的 cadence（X）= N×X 天 buffer
    [如颜色变了，提示"现在该去拍/暂停拍"]
 
@@ -146,7 +155,7 @@ allowed-tools: Bash(*), Read, Edit, Glob
    到时间说："复盘 predictions/2026-05-04_..."
 ```
 
-Buffer 颜色由 [shared-references/cadence-protocol.md](../../shared-references/cadence-protocol.md) 派生。如本次发布让 buffer 跌入红色（断更风险）→ 高亮警告"今天必须再拍 ≥1 条"。
+Buffer 颜色由 [shared-references/cadence-protocol.md](../../shared-references/cadence-protocol.md) 派生，仅视频形态显示。如本次发布让 buffer 跌入红色（断更风险）→ 高亮警告"今天必须再拍 ≥1 条"。非视频内容输出"已加入待复盘"，不显示拍摄 buffer。
 
 ## Key Rules
 
