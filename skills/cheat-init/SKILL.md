@@ -111,6 +111,15 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, WebFetch, Skill
 - 选 b/c/d/e/f/g → `true`，cheat-status 持续提示"你的形态可能需要 bump 调权重"
 - **不再有"严重不匹配"档**——所有形态都能跑工作流，只是有的 rubric 需要更激进的 bump
 
+**Q1.2: 短文平台**（仅 Q1=c 时问）
+
+> "你的短文主要在哪个平台发？
+> a) **小红书** — 推荐 xhs 专用 starter rubric
+> b) **微博 / X** — 即 thread
+> c) **其他 / 不确定"
+
+记录到 `short_text_platform`（`xhs` / `weibo-x` / `other`）。Q1 不是 c 时写 `null`。
+
 **Q1.5: 典型时长**（仅 Q1=a/d/f 时问）
 
 > "你的视频典型时长？
@@ -275,6 +284,7 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
      "skill_version": "1.0.0",
      "rubric_version": "v0",
      "content_form": "<查 Q1 映射表，写 enum 字符串如 \"opinion-video\">",
+     "short_text_platform": <Q1=c 时写 \"xhs\"/\"weibo-x\"/\"other\"，否则 null>,
      "typical_duration_seconds": <Q1.5 派生：30/90/240/450/900>,
      "target_publish_cadence_days": <Q1.6 派生：1/2/7/null>,
      "rubric_form_mismatch": <Q1=a→false；其他→true>,
@@ -321,7 +331,7 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
    ```
    - starter 选择规则：
      - `content_form=opinion-video` → 复制 `starter-rubrics/opinion-video-zero.md`（cold-start）或参考 `opinion-video.md`
-     - `content_form=short-text` 且 `enabled_perf_adapters` 含 `xhs-explore` → 复制 `starter-rubrics/xhs-post-zero.md`（cold-start）或参考 `xhs-post.md`
+     - `content_form=short-text` 且（`enabled_perf_adapters` 含 `xhs-explore` 或 `short_text_platform=xhs`）→ 复制 `starter-rubrics/xhs-post-zero.md`（cold-start）或参考 `xhs-post.md`
      - 其他形态暂没有内置 starter → 询问用户是否先复制 `opinion-video-zero.md` 作为占位并在顶部标 `rubric_form_mismatch: true`，或让用户提供自定义 rubric
 
 2.5. **`rubric-memo.md`**（**新**——配合 cheat-score-blind 隔离协议）
@@ -498,10 +508,11 @@ cheat-learn-from 完成后回到 init 的 Phase 5。
 
 | 字段 | 写入时机 | 来源 |
 |---|---|---|
-| `schema_version` | Phase 3 | 硬编码 "1.1" |
+| `schema_version` | Phase 3 | 硬编码 "1.4" |
 | `skill_version` | Phase 3 | 硬编码 "1.0.0" |
 | `rubric_version` | Phase 3 | "v0" |
 | `content_form` | Phase 3 | Q1 → 查映射表换 enum 值（**不是字母**） |
+| `short_text_platform` | Phase 3 | Q1.2 派生（Q1≠c 时 null） |
 | `typical_duration_seconds` | Phase 3 | Q1.5 派生 |
 | `target_publish_cadence_days` | Phase 3 | Q1.6 派生 |
 | `rubric_form_mismatch` | Phase 3 | Q1≠a → true |

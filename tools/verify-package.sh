@@ -120,7 +120,7 @@ while IFS= read -r sh_file; do
   check_cmd "bash -n ${sh_file#$ROOT/}" bash -n "$sh_file"
 done < <(
   find "$ROOT" \
-    \( -path "$ROOT/install.sh" -o -path "$ROOT/uninstall.sh" -o -path "$ROOT/hooks/*.sh" -o -path "$ROOT/adapters/perf-data/*/run.sh" -o -path "$ROOT/tools/*.sh" \) \
+    \( -path "$ROOT/install.sh" -o -path "$ROOT/uninstall.sh" -o -path "$ROOT/hooks/*.sh" -o -path "$ROOT/adapters/perf-data/*/run.sh" -o -path "$ROOT/adapters/script-extraction/*/run.sh" -o -path "$ROOT/tools/*.sh" \) \
     -type f | sort
 )
 
