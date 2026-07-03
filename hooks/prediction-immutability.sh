@@ -68,16 +68,53 @@ if [[ "$tool_name" == "Write" && ! -f "$file_path" ]]; then
   exit 0
 fi
 
-# For Edit — extract the old_string and new_string and check whether either touches
-# the prediction section.
-#
-# Strategy: compute the byte range of the '## 预测' (or '## Prediction') section
-# in the file BEFORE the edit, then check whether the old_string lies inside that
-# range. If yes — block.
+# For Edit, reconstruct the proposed file and compare its prediction section
+# with the current one. This allows metadata and retrospective edits even when
+# their replacement blocks contain blank lines or span section boundaries.
 
 if [[ "$tool_name" == "Edit" ]]; then
-  old_string=$(printf '%s' "$input" | jq -r '.tool_input.old_string // empty' 2>/dev/null || echo "")
-  if [[ -z "$old_string" ]]; then
+  verification_failed() {
+    echo "[cheat-on-content] 🚫 BLOCKED: could not verify prediction immutability safely." >&2
+    exit 1
+  }
+
+  if ! edit_tmp=$(mktemp -d "${TMPDIR:-/tmp}/cheat-immutability.XXXXXX"); then
+    verification_failed
+  fi
+  trap 'rm -rf "$edit_tmp"' EXIT
+
+  old_string_file="$edit_tmp/old"
+  new_string_file="$edit_tmp/new"
+  proposed_file="$edit_tmp/proposed"
+  current_prediction_file="$edit_tmp/current-prediction"
+  proposed_prediction_file="$edit_tmp/proposed-prediction"
+
+  if ! printf '%s' "$input" |
+    jq -j '.tool_input.old_string // ""' > "$old_string_file" 2>/dev/null; then
+    verification_failed
+  fi
+  if [[ ! -s "$old_string_file" ]]; then
+    exit 0
+  fi
+  if ! printf '%s' "$input" |
+    jq -j '.tool_input.new_string // ""' > "$new_string_file" 2>/dev/null; then
+    verification_failed
+  fi
+
+  if ! replace_all=$(printf '%s' "$input" |
+      jq -r '.tool_input.replace_all // false' 2>/dev/null); then
+    verification_failed
+  fi
+  if ! replacement_count=$(jq -Rrs --rawfile old "$old_string_file" '
+      if ($old | length) == 0 then 0 else (split($old) | length - 1) end
+    ' "$file_path" 2>/dev/null); then
+    verification_failed
+  fi
+
+  # A non-unique Edit without replace_all will be rejected by the Edit tool.
+  # It cannot mutate the file, so the hook has nothing to protect.
+  if [[ "$replacement_count" -eq 0 ]] ||
+    [[ "$replace_all" != "true" && "$replacement_count" -ne 1 ]]; then
     exit 0
   fi
 
@@ -85,31 +122,52 @@ if [[ "$tool_name" == "Edit" ]]; then
   # / '## 预测 v2' / etc. — all version-suffixed prediction headings count as prediction
   # sections and are locked together.
   #
-  # Section ends at the first NON-prediction '## ' heading (typically '## 复盘').
-  prediction_section=$(awk '
-    /^## / {
-      if ($0 ~ /^## (预测|Prediction)([^a-zA-Z]|$)/) {
-        in_pred=1; print; next
-      } else if (in_pred) {
-        exit
+  # Each section ends at the next non-prediction H2. Later versioned prediction
+  # sections are included so every existing version stays immutable.
+  extract_prediction_section() {
+    awk '
+      /^## / {
+        if ($0 ~ /^## (预测|Prediction)([^a-zA-Z]|$)/) {
+          in_pred=1; print; next
+        } else {
+          in_pred=0
+        }
       }
-    }
-    in_pred { print }
-  ' "$file_path" 2>/dev/null || echo "")
+      in_pred { print }
+    ' "$1" 2>/dev/null
+  }
 
-  if [[ -z "$prediction_section" ]]; then
+  extract_prediction_section "$file_path" > "$current_prediction_file"
+
+  if [[ ! -s "$current_prediction_file" ]]; then
     # File has no prediction section — let the edit through.
     # (Could be a non-conforming prediction file or an edge case.)
     exit 0
   fi
 
-  # Check whether old_string appears inside the prediction section.
-  # We use grep -F (literal) on a temporary file because old_string may contain regex chars.
-  pred_tmp=$(mktemp)
-  trap "rm -f '$pred_tmp'" EXIT
-  printf '%s' "$prediction_section" > "$pred_tmp"
+  if ! jq -Rrsj \
+    --rawfile old "$old_string_file" \
+    --rawfile new "$new_string_file" \
+    'split($old) | join($new)' \
+    "$file_path" > "$proposed_file" 2>/dev/null; then
+    verification_failed
+  fi
+  extract_prediction_section "$proposed_file" > "$proposed_prediction_file"
 
-  if grep -qF -- "$old_string" "$pred_tmp" 2>/dev/null; then
+  if diff -q "$current_prediction_file" "$proposed_prediction_file" >/dev/null; then
+    exit 0
+  fi
+
+  # New versioned predictions are valid append-only records. Existing bytes
+  # must remain an exact prefix, and the appended bytes must start at a new
+  # prediction heading.
+  if [[ "$(jq -nr \
+    --rawfile current "$current_prediction_file" \
+    --rawfile proposed "$proposed_prediction_file" '
+      ($proposed | startswith($current)) and
+      ($proposed[($current | length):] |
+        test("^## (预测|Prediction)([^a-zA-Z]|$)"))
+    ')" != "true" ]]; then
     cat >&2 <<EOF
 
 [cheat-on-content] 🚫 BLOCKED: edit targets the '## 预测' / '## Prediction' section of:
