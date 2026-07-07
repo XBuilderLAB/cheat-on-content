@@ -164,7 +164,7 @@ Full workflow + sub-skill details: see [SKILL.md](SKILL.md).
 ## 📈 Star History
 
 <a href="https://star-history.com/#XBuilderLAB/cheat-on-content&Date">
-  <img src="https://api.star-history.com/svg?repos=XBuilderLAB/cheat-on-content&type=Date" alt="Star History Chart" width="720">
+  <img src="docs/star-history.svg" alt="Star History Chart" width="720">
 </a>
 
 ---
