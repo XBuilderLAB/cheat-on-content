@@ -30,8 +30,8 @@
 **Calibration Samples (at predict time)**: 3
 **Confidence**: 🟡 偏低 (中枢 ±40%，可作为参考之一)
 **Prediction Basis**: pre_shoot  ← 或 `post_shoot_pre_publish`（v2 段）
-**Scored By**: claude  ← 或 `claude+user_override`
-**BlindScored By**: subagent-v1  ← 或 `main-claude-self` / `mixed`
+**Scored By**: agent  ← 或 `agent+user_override`
+**BlindScored By**: subagent-v1  ← 或 `main-agent-self` / `mixed`
 **BlindScore Disagreement**: <inline JSON 见下方>
 **User Override**: none  ← 或列出被覆盖字段
 **预测时数据状态**: **blind**（未看任何 <平台> 实际播放数据）
@@ -49,7 +49,7 @@
 ```
 
 - `blind`：sub-agent 给的分
-- `self`：主 Claude 自估（Phase 2 末尾 internal 估值，不落盘的那份现在落盘了——这是必要的诚实代价）
+- `self`：主 agent 自估（Phase 2 末尾 internal 估值，不落盘的那份现在落盘了——这是必要的诚实代价）
 - `delta`：|blind - self|
 - `decided_as`：进入 composite 计算的最终值
 - `user_decision`（如有）：Phase 2.5 用户裁定时的选项 `a` / `b` / `c <number>`——只在 delta ≥ DISAGREEMENT_THRESHOLD 时出现
@@ -61,14 +61,14 @@
 - `Script Hash` 必填——cheat-shoot 时再 hash `videos/<id>/script.md`，不一致 → 复盘段加 integrity warning
 - `Calibration Samples` + `Confidence` 必填——告诉读者这次预测有多可信。**Confidence 自动派生**自 calibration_samples（见 state-management.md）
 - `Prediction Basis` 必填——`pre_shoot` 为标准盲预测；`post_shoot_pre_publish` 为 v2 拍后改稿重判（仍未见数据，但软盲）
-- `Scored By` 必填——告诉读者这次预测是 Claude 全自动还是用户介入改过：
-  - `claude`：Claude 主动打分 + bucket + 概率，用户 review 后回 "ok" 接受
-  - `claude+user_override`：用户在 review 阶段挑刺改了某些字段
+- `Scored By` 必填——告诉读者这次预测是 agent 全自动还是用户介入改过：
+  - `agent`：主 agent 主动打分 + bucket + 概率，用户 review 后回 "ok" 接受
+  - `agent+user_override`：用户在 review 阶段挑刺改了某些字段
 - **`BlindScored By` 必填**——本次维度分由谁打：
   - `subagent-v1`：通过 Task tool 调 cheat-score-blind sub-agent 拿到的盲打分（默认，Phase 2 路径）
-  - `main-claude-self`：用户 `--skip-blind` flag 或 Phase 2.5 选 b（信主 Claude 自估）——同时 `state.last_prediction_self_scored=true`
+  - `main-agent-self`：用户 `--skip-blind` flag 或 Phase 2.5 选 b（信主 agent 自估）——同时 `state.last_prediction_self_scored=true`
   - `mixed`：Phase 2.5 用户选 c 给个别维度自定分，其他维度仍走 sub-agent
-- **`BlindScore Disagreement` 必填**——上方 JSON。**所有维度必记**（即使 delta=0），不允许"只记差异大的"。理由：复盘时按 delta 分布分析"哪类维度 sub-agent 与主 Claude 系统性分歧"是 rubric 演进的重要信号
+- **`BlindScore Disagreement` 必填**——上方 JSON。**所有维度必记**（即使 delta=0），不允许"只记差异大的"。理由：复盘时按 delta 分布分析"哪类维度 sub-agent 与主 agent 系统性分歧"是 rubric 演进的重要信号
 - `User Override` 必填（如有覆盖）——列出哪些字段从 X 改成 Y，附用户给的理由。复盘时这个字段帮诊断：用户的覆盖被实绩验证（用户直觉准）→ rubric 可能漏了什么
 
 ---
@@ -82,14 +82,14 @@
 
 **分数 (vN)**: ER5 / HP5 / QL5 / NA3 / AB5 / SR2 / SAT4 → composite=**8.24**
 
-**用户改写要点 vs Claude 草稿（如有）**:
+**用户改写要点 vs agent 草稿（如有）**:
 - **开头**：user 砍掉 EWDM 模型名和铺垫
 - **砍掉**：[具体段落 / 概念名 / 铺垫]
 - **保留**：[关键的金句 / 致谢段 / 主体结构]
 - **节奏**：比草稿 [紧 / 松] 约 N%
 ```
 
-> 如果是用户从零写的（没用 cheat-seed），这一段写"用户原创稿，无 Claude 草稿对照"。
+> 如果是用户从零写的（没用 cheat-seed），这一段写"用户原创稿，无 agent 草稿对照"。
 
 ---
 
@@ -266,7 +266,7 @@ file: predictions/YYYY-MM-DD_<id>_<short>.md
 （metadata block）
 
 ## 输入快照                     ← 组件 2
-（scores + 用户改写要点 vs Claude 草稿）
+（scores + 用户改写要点 vs agent 草稿）
 
 ## 预测 v1                      ← 组件 3 ⭐ IMMUTABLE 起点（基于 pre-shoot 草稿）
 （bucket + 概率 + 中枢 + 一句话 reason）

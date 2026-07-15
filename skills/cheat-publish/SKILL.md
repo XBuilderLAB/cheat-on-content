@@ -1,11 +1,13 @@
 ---
 name: cheat-publish
 description: 登记一篇内容已发布，把 URL/平台 ID/发布时间写入对应预测文件 header 和 state file。这是一个轻量动作——只更新元数据，**不动预测段任何字符**。触发词："已发布"/"I shipped"/"发布链接是 X"/"刚发完 [url]"/"publish registered"。
-argument-hint: <prediction-file-or-url> [— platform: youtube|bilibili|douyin|...]
+argument-hint: "<prediction-file-or-url> [— platform: youtube|bilibili|douyin|...]"
 allowed-tools: Bash(*), Read, Edit, Glob
 ---
 
 # /cheat-publish — 发布登记
+
+> **Data root：**任何读写前都按显式 `--dir` → `CHEAT_DATA_DIR` → `.cheat-content.json` → 当前目录解析数据目录。详见 [data-directory-protocol.md](../../shared-references/data-directory-protocol.md)。
 
 把作品的发布元数据（URL、发布时间、平台）补到预测文件 header 与 state file。**禁止改预测段**——hook 会拦。
 

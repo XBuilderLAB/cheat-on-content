@@ -18,6 +18,7 @@
 # ── 本地缓存与生成物 ──
 # .cheat-cache = 使用日志/热点去重缓存；.cheat-hooks = init 生成的 hook 副本；.debug = adapter 调试输出
 .cheat-cache/
+deliverables/
 .cheat-hooks/
 .debug/
 

@@ -19,13 +19,13 @@
 **Actual Script Length**: `<script.md 实际字数>`  ← e.g. 980 字
 **Calibration Samples (at predict time)**: `<state.calibration_samples>`  ← e.g. 3
 **Confidence**: `<emoji + 标签>`  ← e.g. 🟡 偏低 (中枢 ±40%，可作为参考之一)。从 calibration_samples 派生，见 state-management.md
-**Scored By**: `claude` | `claude+user_override`  ← Claude 自打分；如用户在 review 阶段挑刺改了字段，标 `+user_override`
+**Scored By**: `agent` | `agent+user_override`  ← agent 自打分；如用户在 review 阶段挑刺改了字段，标 `+user_override`
 **User Override**: `<如有覆盖，列出哪些字段被改了+原值与新值>` | `none`
-  ← 例：`AB: claude=4 → user=3 (用户认为 '一人公司题没那么普适')` `中枢: claude=60w → user=40w`
-  ← 复盘时这个字段帮诊断：用户哪个维度直觉跟 Claude 系统性偏离，被实绩验证 → rubric 可能漏了什么
+  ← 例：`AB: agent=4 → user=3 (用户认为 '一人公司题没那么普适')` `中枢: agent=60w → user=40w`
+  ← 复盘时这个字段帮诊断：用户哪个维度直觉跟主 agent 系统性偏离，被实绩验证 → rubric 可能漏了什么
 **预测时数据状态**: **blind**（未看任何 `<平台>` 实际播放数据）
 **Prediction Basis**: `pre_shoot`  ← 或 `post_shoot_pre_publish`（v2 段）
-**BlindScored By**: `subagent-v1`  ← 或 `main-claude-self` / `mixed`
+**BlindScored By**: `subagent-v1`  ← 或 `main-agent-self` / `mixed`
 **BlindScore Disagreement**: `<inline JSON — 每维度一条，见 prediction-anatomy.md>`
 
 ---
@@ -36,13 +36,13 @@
 
 > 示例：ER5 / HP5 / QL5 / NA3 / AB5 / SR2 / SAT4 → composite=**8.24**
 
-**用户改写要点 vs Claude 草稿**（如有）:
+**用户改写要点 vs agent 草稿**（如有）:
 - **开头**：[user 砍掉了什么 / 加了什么]
 - **砍掉**：[具体段落 / 概念名 / 铺垫]
 - **保留**：[关键的金句 / 致谢段 / 主体结构]
 - **节奏**：比草稿 [紧 / 松] 约 N%
 
-> 如用户从零写没用 cheat-seed，写"用户原创稿，无 Claude 草稿对照"。
+> 如用户从零写没用 cheat-seed，写"用户原创稿，无 agent 草稿对照"。
 
 ---
 

@@ -1,11 +1,13 @@
 ---
 name: cheat-recommend
 description: 从 candidates.md 里按当前 rubric 排序推荐 top N 选题，每条带 composite + 一句 rationale + 锚点对比。**candidates 不存在时给引导而非报错**。触发词："推荐选题"/"next topic"/"下一篇做什么"/"recommend topics"/"挑一个选题"。
-argument-hint: [— top: N] [— filter: tier1|all|safe|risky]
+argument-hint: "[— top: N] [— filter: tier1|all|safe|risky]"
 allowed-tools: Read, Glob, Grep
 ---
 
 # /cheat-recommend — 候选池排序推荐
+
+> **Data root：**任何读写前都按显式 `--dir` → `CHEAT_DATA_DIR` → `.cheat-content.json` → 当前目录解析数据目录。详见 [data-directory-protocol.md](../../shared-references/data-directory-protocol.md)。
 
 读 candidates.md → 按 composite 排序 → 输出 top N 推荐，每条带评分细节 + 锚点对比 + 推荐理由。
 

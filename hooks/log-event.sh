@@ -19,7 +19,17 @@
 set -uo pipefail
 
 event_type="${1:-unknown}"
-cache_dir="${CLAUDE_PROJECT_DIR:-.}/.cheat-cache"
+project_dir="${CLAUDE_PROJECT_DIR:-.}"
+data_dir="$project_dir"
+if [[ -n "${CHEAT_DATA_DIR:-}" ]]; then
+  if [[ "$CHEAT_DATA_DIR" = /* ]]; then data_dir="$CHEAT_DATA_DIR"; else data_dir="$project_dir/$CHEAT_DATA_DIR"; fi
+elif [[ -f "$project_dir/.cheat-content.json" ]] && command -v jq >/dev/null 2>&1; then
+  pointer_dir=$(jq -r 'select(.schema_version == 1) | .data_dir // empty' "$project_dir/.cheat-content.json" 2>/dev/null || true)
+  if [[ -n "$pointer_dir" ]]; then
+    if [[ "$pointer_dir" = /* ]]; then data_dir="$pointer_dir"; else data_dir="$project_dir/$pointer_dir"; fi
+  fi
+fi
+cache_dir="$data_dir/.cheat-cache"
 log_file="${cache_dir}/usage.jsonl"
 
 mkdir -p "$cache_dir" 2>/dev/null || exit 0  # never block on permission errors

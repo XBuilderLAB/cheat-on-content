@@ -7,6 +7,7 @@
     python review.py note <note_id> [script.txt]   # 直接指定笔记
     python review.py archive <notes.json> [output_root] [limit]   # 批量归档正文+图片
     python review.py summarize [out_dir]   # 账号级汇总（基于最近 50 条）
+    python review.py audit [out_dir] [limit] [account_name]  # 商业化账号体检
 
 archive / summarize 能力来自 xhs-analytics 的公开页解析，可无登录抓取正文与图片。
 """
@@ -25,6 +26,11 @@ from pathlib import Path
 import crawler
 import renderer
 from paths import runtime_project_root, videos_dir
+
+TOOLS_DIR = Path(__file__).resolve().parents[3] / "tools"
+if str(TOOLS_DIR) not in sys.path:
+    sys.path.insert(0, str(TOOLS_DIR))
+from cheat_audit import build_audit, write_audit  # noqa: E402
 
 
 LOG_FILE: io.TextIOWrapper | None = None
@@ -348,6 +354,54 @@ async def run_summarize(out_dir: Path) -> None:
     print(f"\n✓ {out_path}")
 
 
+async def run_account_audit(out_dir: Path, limit: int = 30, account_name: str = "未命名账号") -> None:
+    """Fetch the creator's own notes and generate the productized audit bundle."""
+
+    if limit < 20 or limit > 50:
+        raise ValueError("账号体检 limit 必须在 20–50 之间")
+    out_dir.mkdir(parents=True, exist_ok=True)
+    print(f"[audit] 拉取创作者中心最近 {limit} 条笔记……")
+    sess = await crawler.Session.open(headless=True)
+    try:
+        notes = await crawler.fetch_recent_notes(sess, limit=limit)
+    finally:
+        await sess.close()
+    if not notes:
+        raise RuntimeError("没有抓到笔记；先运行 review.py login 并确认创作者中心可访问")
+
+    for index, note in enumerate(notes, 1):
+        xsec = note.get("xsec_token") or ""
+        if not xsec:
+            continue
+        try:
+            public = await asyncio.to_thread(crawler.fetch_public_note, note["note_id"], xsec)
+            crawler._merge_public_note(note, public)
+            note["comments"] = await asyncio.to_thread(
+                crawler.fetch_public_comments, note["note_id"], xsec, 20
+            )
+        except Exception as exc:
+            note["audit_fetch_warning"] = str(exc)
+        if index < len(notes):
+            await asyncio.sleep(0.5)
+
+    raw_dir = runtime_project_root() / ".cheat-cache" / "account-audit"
+    raw_dir.mkdir(parents=True, exist_ok=True)
+    raw_path = raw_dir / "account-notes.json"
+    raw_payload = {
+        "account_name": account_name,
+        "platform": "xiaohongshu",
+        "source": "xhs-explore:creator-owned",
+        "classification": "reconstructed",
+        "notes": notes,
+    }
+    raw_path.write_text(json.dumps(raw_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    audit = build_audit(raw_payload, account_name=account_name, platform="xiaohongshu")
+    paths = write_audit(audit, out_dir)
+    print(f"\n✓ raw（不入 git）: {raw_path}")
+    for name, path in paths.items():
+        print(f"✓ {name}: {path}")
+
+
 def _usage() -> str:
     return """
 用法:
@@ -357,6 +411,7 @@ def _usage() -> str:
   python review.py note <note_id> [script.txt]
   python review.py archive <notes.json> [output_root] [limit]
   python review.py summarize [out_dir]
+  python review.py audit [out_dir] [limit] [account_name]
 """.strip()
 
 
@@ -401,6 +456,12 @@ def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == "summarize":
         out_dir = Path(sys.argv[2]).expanduser().resolve() if len(sys.argv) > 2 else runtime_project_root() / "reports"
         asyncio.run(run_summarize(out_dir))
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "audit":
+        out_dir = Path(sys.argv[2]).expanduser().resolve() if len(sys.argv) > 2 else runtime_project_root() / "deliverables" / "account-audit"
+        limit = int(sys.argv[3]) if len(sys.argv) > 3 else 30
+        account_name = sys.argv[4] if len(sys.argv) > 4 else "未命名账号"
+        asyncio.run(run_account_audit(out_dir, limit=limit, account_name=account_name))
         return
     if len(sys.argv) > 1 and sys.argv[1] in ("-h", "--help"):
         print(_usage())

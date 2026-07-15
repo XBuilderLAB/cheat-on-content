@@ -1,7 +1,7 @@
 ---
 name: cheat-migrate
 description: 把老用户的 .cheat-state.json 升级到当前 schema_version。读 migrations/registry.md 算迁移链，按顺序应用每一步迁移文件。幂等：跑两次结果一样。失败停在中间版本不前进。触发词："迁移"/"升级 state"/"migrate"/"我的 state 是老版本"/"schema 版本不对"。
-argument-hint: [— from: <version>] [— to: <version>] [— dry-run]
+argument-hint: "[— from: <version>] [— to: <version>] [— dry-run] [— dir: <data-dir>]"
 allowed-tools: Bash(*), Read, Write, Edit, Skill
 ---
 
@@ -47,7 +47,7 @@ allowed-tools: Bash(*), Read, Write, Edit, Skill
 
 | 必填 | 来源 |
 |---|---|
-| `.cheat-state.json` | 用户项目根 |
+| `.cheat-state.json` | 解析后的数据目录（显式 `--dir` → `CHEAT_DATA_DIR` → `.cheat-content.json` → 当前目录） |
 | `migrations/registry.md` | LATEST_SCHEMA + 版本链表 |
 | `migrations/<from>-to-<to>.md` | 每步具体迁移指令 |
 
@@ -57,7 +57,7 @@ allowed-tools: Bash(*), Read, Write, Edit, Skill
 
 ### Phase 0: 确定迁移链
 
-1. 读 `.cheat-state.json` → 解析 `current_version = state.schema_version`
+1. 解析数据目录，再读 `.cheat-state.json` → 解析 `current_version = state.schema_version`
 2. 读 `migrations/registry.md` → 解析 `LATEST_SCHEMA` 字段（行：`LATEST_SCHEMA = "X.Y"`）
 3. 解析 `args.to` 覆盖（如有）；否则 target = LATEST_SCHEMA
 4. 解析 `args.from` 覆盖（罕见场景：用户的 state 文件 schema 字段坏了，强制指定起点）
@@ -216,7 +216,7 @@ Claude: [跑 cheat-migrate]
 ```
 用户：我从 v0.1.0 升到 v0.5.0，state 还是 1.0
 Claude: [跑 cheat-migrate]
-  Phase 0: current=1.0, target=1.4 (LATEST), chain=[(1.0, 1.1), (1.1, 1.2), (1.2, 1.3), (1.3, 1.4)]
+  Phase 0: current=1.0, target=1.5 (LATEST), chain=[(1.0, 1.1), (1.1, 1.2), (1.2, 1.3), (1.3, 1.4), (1.4, 1.5)]
   Phase 1: dry-run 输出 4 步计划
   ...
 ```

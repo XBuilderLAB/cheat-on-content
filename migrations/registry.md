@@ -6,12 +6,12 @@ cheat-on-content 的 schema 版本演进单一来源。`/cheat-migrate` 读这�
 
 ## 当前 schema_version
 
-**`1.4`** —— 由 `cheat-init` Phase 3 写入新 state 文件。
+**`1.5`** —— 由 `cheat-init` Phase 3 写入新 state 文件。
 
 下方 `LATEST_SCHEMA` 标记位被 `cheat-migrate` skill 和 SessionStart hook 引用：
 
 ```
-LATEST_SCHEMA = "1.4"
+LATEST_SCHEMA = "1.5"
 ```
 
 > 维护者注意：bump 这个值的同时**必须**新增对应迁移文件 + 在下方"版本链"追加一行。
@@ -29,6 +29,7 @@ LATEST_SCHEMA = "1.4"
 | 1.1 | 1.2 | NO | [1.1-to-1.2.md](1.1-to-1.2.md) | `shoots[]` 项扩展 5 字段（`scripts_path` / `script_consistency` / `script_diff_pct` / `v2_prediction_written` / `script_hash_at_shoot`）— 配合"拍后改稿触发 v2 预测重判"工作流 |
 | 1.2 | 1.3 | NO | [1.2-to-1.3.md](1.2-to-1.3.md) | 新增 `last_prediction_self_scored: bool` + `last_self_scored_at` 字段——配合 cheat-score-blind sub-agent 引入的 channel B 隔离打分。`true` 表示上次预测走了 `--skip-blind`，cheat-status 持续 nag |
 | 1.3 | 1.4 | **BREAKING for blind channel** | [1.3-to-1.4.md](1.3-to-1.4.md) | rubric 文件拆分：`rubric_notes.md` → `rubric_notes.md`（blind 白名单，通用语言）+ `rubric-memo.md`（blind 硬禁读，含真实视频名/实绩）。state 字段不变；老用户必须跑 migrate 把现有 rubric_notes.md 拆开。不跑 → blind sub-agent 仍会标 non_blind_warning |
+| 1.4 | 1.5 | NO | [1.4-to-1.5.md](1.4-to-1.5.md) | `hooks_installed` 拆为 scripts/backend/enforced 三字段，修复 Codex 下虚假“hook 已生效”语义；新增隔离数据目录约定 |
 
 ---
 

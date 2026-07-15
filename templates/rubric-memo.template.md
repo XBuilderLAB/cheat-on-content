@@ -44,7 +44,7 @@ cheat-bump Phase 5 落地时把升级 Memo 写**这里**，**不写**进 `rubric
 | `cheat-retro` | ✅ 读 | 复盘时回看历史 Memo 找 rubric 演化轨迹 |
 | `cheat-status` | ✅ 读 | 看板上显示"上次 bump 用了什么证据" |
 | **`cheat-score-blind`** | ❌ **硬禁** | refusal_code: `blocked_rubric_memo` |
-| `cheat-score` / `cheat-predict` 主 Claude 自估那部分 | 不主动读 | 主对话本身已被污染，再读一遍 Memo 也只是冗余 |
+| `cheat-score` / `cheat-predict` 主 agent 自估那部分 | 不主动读 | 主对话本身已被污染，再读一遍 Memo 也只是冗余 |
 
 ---
 

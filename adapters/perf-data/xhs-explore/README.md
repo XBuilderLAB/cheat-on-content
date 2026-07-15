@@ -81,9 +81,14 @@ python "$ADAPTER/review.py" archive my_notes.json data/raw/notes/archive 50
 
 # 账号级汇总（基于创作者中心最近 50 条 + 公开页标签）
 python "$ADAPTER/review.py" summarize reports
+
+# 本人账号最近 20–50 篇 → 商业化账号体检三件套
+python "$ADAPTER/review.py" audit deliverables/account-audit 30 "账号名"
 ```
 
-输出在 当前目录/videos/<日期>_<标题>/report.md；archive 输出在 `<output_root>/<note_id>/`。
+输出在解析后的数据目录：单篇进 `videos/`；archive 进指定目录；audit 原始缓存进 `.cheat-cache/account-audit/`，交付物进 `deliverables/account-audit/`。
+
+数据目录解析优先级：`CHEAT_DATA_DIR` → 旧 `CHEAT_PROJECT_ROOT` → `.cheat-content.json` → 当前目录。
 
 ## 怎么拿到 note_id
 

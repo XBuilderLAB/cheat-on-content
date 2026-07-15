@@ -32,7 +32,7 @@
 ## 📈 健康度
 
 - `rubric_notes.md`: [X 行]（健康，<600 警戒线）
-- `hooks_installed`: [✅ / ❌]
+- prediction guard: [✅ enforced (<hooks_backend>) / ⚠️ honor-system；scripts=<guard_scripts_installed>]
 - external audit configured: [✅ / ❌]
 
 ## 下一步建议

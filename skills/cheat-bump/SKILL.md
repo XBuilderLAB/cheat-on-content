@@ -1,11 +1,13 @@
 ---
 name: cheat-bump
 description: 提议并执行 rubric 或 bucket 升级。两种模式：**完整 rubric bump**（最高风险动作，5 步强制 + 跨模型审核）和 **--bucket-only 轻量重校**（只换 bucket 边界，不动 rubric 公式）。**Phase 2 强制走 cheat-score-blind sub-agent 给校准池重打分**——不接受 self-scored fallback。触发词："升级 rubric"/"bump rubric"/"更新公式"/"我想加一个维度"/"调整权重"/"重校桶"/"recalibrate bucket"。
-argument-hint: --propose "<...>" | --bucket-only [--scheme ratio|absolute|percentile]
+argument-hint: '--propose "<...>" | --bucket-only [--scheme ratio|absolute|percentile]'
 allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Skill, Task, mcp__llm-chat__chat
 ---
 
 # /cheat-bump — Rubric / Bucket 升级
+
+> **Data root：**任何读写前都按显式 `--dir` → `CHEAT_DATA_DIR` → `.cheat-content.json` → 当前目录解析数据目录。详见 [data-directory-protocol.md](../../shared-references/data-directory-protocol.md)。
 
 两种模式：
 
@@ -124,7 +126,7 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, Grep, Skill, Task, mcp__llm-cha
 
 Glob `predictions/*.md` 中所有有完整复盘段的文件 → 校准池。
 
-**bump 是工具最高风险动作——所有重打必须走 [cheat-score-blind](../cheat-score-blind/SKILL.md) sub-agent**。inline 重打 = 主 Claude 已经看过实绩，rank 一致性变成 overfit 而非真信号。
+**bump 是工具最高风险动作——所有重打必须走 [cheat-score-blind](../cheat-score-blind/SKILL.md) sub-agent**。inline 重打 = 主 agent 已经看过实绩，rank 一致性变成 overfit 而非真信号。
 
 #### 强制约束
 
@@ -300,7 +302,7 @@ prompt:
 （rubric bump 时全量重算，由 cheat-score-blind sub-agent 独立打分；详见 rubric-memo.md 的 v2 → v2.1 升级 Memo）
 ```
 
-`blind: true` 字段**必填**——告诉未来读这条记录的人"这是 channel B 隔离打分，不是主 Claude 自评"。如果某条 prediction 在 Phase 2 因 sub-agent 失败被排除 → 不会有 Re-scored 行（保持原样）。
+`blind: true` 字段**必填**——告诉未来读这条记录的人"这是 channel B 隔离打分，不是主 agent 自评"。如果某条 prediction 在 Phase 2 因 sub-agent 失败被排除 → 不会有 Re-scored 行（保持原样）。
 
 用 Edit 工具，匹配每个文件的最末尾。
 
@@ -456,7 +458,7 @@ baseline: 4.2w 中位数（基于 5 篇校准样本）
 ## Refusals
 
 - 「跳过校准池重打，直接换公式」 → 拒绝。原则 #2
-- 「跳过 cheat-score-blind sub-agent，主 Claude 直接重打就行」 → 拒绝。bump **不接受**任何 self-scored fallback——sub-agent 不可用 → abort bump，不接受"自审"
+- 「跳过 cheat-score-blind sub-agent，主 agent 直接重打就行」 → 拒绝。bump **不接受**任何 self-scored fallback——sub-agent 不可用 → abort bump，不接受"自审"
 - 「跳过外部 LLM 审核」 → 仅当 `CROSS_MODEL_AUDIT=false` 显式设置
 - 「这次 THRESHOLD 调到 3/5 让它过」 → 拒绝。改 THRESHOLD 是元层级 bump
 - 「保留所有旧观察作为历史」 → 违反原则 #3

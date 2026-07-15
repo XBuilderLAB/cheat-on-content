@@ -1,11 +1,13 @@
 ---
 name: cheat-shoot
 description: 登记一条视频已拍摄。**建 video folder + 询问实际拍摄稿是否与 scripts/<id>.md 一致 + buffer +1**。与 cheat-publish 配对：拍了进队列，发了出队列。触发词："拍了"/"拍了 X"/"shot"/"shot it"/"已拍 X"/"录完了"。
-argument-hint: <scripts-path-or-id>
+argument-hint: "<scripts-path-or-id>"
 allowed-tools: Bash(*), Read, Write, Edit, Glob
 ---
 
 # /cheat-shoot — 登记拍摄完成 + 建 video folder + (改稿则) 触发 v2 预测
+
+> **Data root：**任何读写前都按显式 `--dir` → `CHEAT_DATA_DIR` → `.cheat-content.json` → 当前目录解析数据目录。详见 [data-directory-protocol.md](../../shared-references/data-directory-protocol.md)。
 
 把视频从"已写预测、未拍摄"状态推进到"已拍摄、未发布"状态。这一步：
 1. **建 `videos/<同 id>/`** 目录（之前没有的话）
