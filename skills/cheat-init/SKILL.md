@@ -142,11 +142,12 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, WebFetch, Skill
 > c) YouTube — 装 youtube-data-api adapter（需 API key）
 > d) B 站 — bilibili-stat adapter
 > e) LinkedIn — 装 linkedin-session adapter（Playwright + 登录 LinkedIn，抓单帖分析）
-> f) 其他 / 多平台 — 走 manual paste 模式"
+> f) 微信视频号 — 装 wechat-channels adapter（Playwright + 扫码登录视频号助手，仅抓自己账号后台数据）
+> g) 其他 / 多平台 — 走 manual paste 模式"
 
-如选 a/b/c/d/e → 询问 Q2.2；如选 f → 跳到 Q2.3 manual。
+如选 a/b/c/d/e/f → 询问 Q2.2；如选 g → 跳到 Q2.3 manual。
 
-**Q2.2: adapter 安装时机**（仅 Q2.1=a/b/c/d/e）
+**Q2.2: adapter 安装时机**（仅 Q2.1=a/b/c/d/e/f）
 
 > "现在装 adapter 自动抓取，还是先手动告诉我？
 > - 现在装 — 引导你装 Playwright + 扫码 → 抓回最近 N 条数据
@@ -267,17 +268,17 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
 0. **`.gitignore`（安全 — 必须第一步创建）**
    ```
    "先创建 .gitignore，把账号凭证挡在版本控制外——这是第一件事。
-    .auth/ / .auth-xhs/ / .auth-linkedin/ 存的是抖音 / 小红书 / LinkedIn 的登录态（等同账号密码），
+    .auth/ / .auth-xhs/ / .auth-linkedin/ / .auth-wechat-channels/ 存的是各平台登录态（等同账号密码），
     .cheat-secrets.json 存 API key / cookie——一旦被 commit 或云同步就等于泄露账号。
     注意：predictions/ videos/ scripts/ 这些**不**忽略——原则 #1/#3 依赖
     git history 作为预测的不可变档案，必须入库。"
    ```
    - 复制 `cheat-on-content/templates/gitignore.template` → `<user-repo>/.gitignore`
    - 如 `<user-repo>/.gitignore` **已存在** → 不覆盖；逐行检查并**追加缺失行**，至少确保
-     `.auth/`、`.auth-xhs/`、`.auth-linkedin/`、`.cheat-secrets.json` 四行存在
+     `.auth/`、`.auth-xhs/`、`.auth-linkedin/`、`.auth-wechat-channels/`、`.cheat-secrets.json` 五行存在
    - 即使用户项目当前**还不是 git 仓库**也照常创建——它会在用户 `git init` 的那一刻立即生效
    - 创建后提醒一句：如果项目已经 `git init` 过且可能误加过 `.auth/`，让用户跑
-     `git rm -r --cached .auth .auth-xhs .auth-linkedin .cheat-secrets.json` 把已暂存的凭证移出
+     `git rm -r --cached .auth .auth-xhs .auth-linkedin .auth-wechat-channels .cheat-secrets.json` 把已暂存的凭证移出
 
 1. **`.cheat-state.json`**
    ```
@@ -304,7 +305,7 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
      "data_layer": "markdown",
      "hooks_installed": <查 Q5 映射表，写 bool true/false>,
      "enabled_trend_sources": ["manual-paste"],
-     "enabled_perf_adapters": <Q2.1=a→[\"douyin-session\"]；b→[\"xhs-explore\"]；c→[\"youtube-data-api\"]；d→[\"bilibili-stat\"]；e→[\"linkedin-session\"]；其他→[]>,
+     "enabled_perf_adapters": <Q2.1=a→[\"douyin-session\"]；b→[\"xhs-explore\"]；c→[\"youtube-data-api\"]；d→[\"bilibili-stat\"]；e→[\"linkedin-session\"]；f→[\"wechat-channels\"]；其他→[]>,
      "last_bump_at": null,
      "last_bump_self_audited": false,
      "last_published_at": null,

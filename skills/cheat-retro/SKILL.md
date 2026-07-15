@@ -96,6 +96,7 @@ allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill
 | `douyin` | `adapters/perf-data/douyin-session/` | `bash <adapters-dir>/douyin-session/run.sh <aweme_id> <video_folder>` |
 | `xhs` | `adapters/perf-data/xhs-explore/` | `bash <adapters-dir>/xhs-explore/run.sh <note_id> <video_folder>` |
 | `linkedin` | `adapters/perf-data/linkedin-session/` | `bash <adapters-dir>/linkedin-session/run.sh <activity_id> <video_folder>` |
+| `wechat_channels` | `adapters/perf-data/wechat-channels/` | `bash <adapters-dir>/wechat-channels/run.sh <post_id> <video_folder>` |
 | `youtube` | `adapters/perf-data/youtube-data-api/`（planned — batch 3, not yet available） | 调 YouTube Data API（需 API key） |
 | `bilibili` | `adapters/perf-data/bilibili-stat/` | `bash <adapters-dir>/bilibili-stat/run.sh <bvid> <video_folder>` |
 | 其他 | 无 adapter | 优雅降级到 Path A |
@@ -119,6 +120,12 @@ allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill
 - 调用前确认 cookie 存在（adapter 找 `.auth-linkedin/`）；不存在则提示先跑 `python <adapter>/crawler.py login`
 - **只能抓你本人发的帖子**（LinkedIn 单帖分析仅作者可见）；LinkedIn 界面 日/英 随机切换，`extract.py` 的 `POST_METRICS` 已存双语标签，万一某项为 None 看 `.cheat-cache/linkedin-session-debug/post_<id>.txt` 把新标签补进去
 - **评论只给数、不给正文**（分析页限制）→ report.md 标注 → **降级要求用户 manual 粘 top 评论**（评论是真信号，不能省）
+
+**wechat-channels 的特殊处理**：
+- 仅抓用户自己登录后可见的视频号助手后台数据；调用前确认内容项目存在 `.auth-wechat-channels/`
+- 不存在登录态时，提示先运行 `python <adapter>/review.py login` 并扫码；登录态只保存在内容项目本地
+- adapter 输出 `report.md`，但不落盘原始响应、请求体、完整后台 URL、后台截图、页面文本、评论者昵称或内部用户 ID
+- 找不到目标作品或 adapter 失败时，非 0 退出并降级 manual；不得把旧 report.md 当作本次成功
 
 **bilibili-stat 的特殊处理**：
 - 视频 URL（`https://www.bilibili.com/video/<BV号>` 或 b23.tv 短链）或直接给 BV 号 → adapter 自动提取 BV 号

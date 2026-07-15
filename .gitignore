@@ -47,6 +47,7 @@ content.db
 .auth/
 .auth-xhs/
 .auth-linkedin/
+.auth-wechat-channels/
 .debug/
 
 # Editor / IDE
