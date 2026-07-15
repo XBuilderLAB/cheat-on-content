@@ -42,6 +42,8 @@ allowed-tools: Bash(*), Read, Glob, Grep
 
 ### Phase 1: 读状态
 
+先按显式 `--dir` → `CHEAT_DATA_DIR` → `.cheat-content.json` → 当前目录旧布局解析数据目录；以下所有相对路径均相对该数据目录。
+
 ```python
 state = read_json('.cheat-state.json')
 if not state:
@@ -89,7 +91,7 @@ rubric_lines = wc -l rubric_notes.md
 12. **rubric_notes.md 行数 > CLEANUP_LINE_THRESHOLD** → "建议清算观察段（手动或下次 bump 触发）"
 13. **calibration_samples ≥ 5 + pool_status=none** → "可以开始建立选题池了"
 14. **calibration_samples ≥ 15 + pool_status=none** → "强烈建议建池：/cheat-trends 或手动建 candidates.md"
-15. **state.hooks_installed=false** → "你的 immutability 是君子协定，建议跑 /cheat-init 装 hook"
+15. **state.hooks_enforced=false** → "你的 immutability 是君子协定。guard scripts 是否存在：<guard_scripts_installed>；当前 backend：<hooks_backend>。Codex 下不要声称物理强制。"
 16. **state.last_bump_self_audited=true** → "上次 bump 是自审。建议配置 mcp__llm-chat__chat 后下次 bump 走外部审"
 17. **state.rubric_form_mismatch=true** → "你的 content_form 不是 opinion-video，用了内置观点 rubric。前几篇预测会更不准，下次 bump 时建议自行调整权重适配你的形态"
 18. **state.benchmark_status=pending** → "🎯 你 init 时答应等下找对标账号但还没找。跑 /cheat-learn-from 导入 ≥3 条对标视频，工具就有 anchor 了"
@@ -130,7 +132,7 @@ Baseline: 4.2w 中位数
 
 📈 健康度
   - rubric_notes.md: 412 行（健康，<600 警戒线）
-  - hooks_installed: ✅
+  - prediction guard: ✅ enforced (claude-code)
   - external audit configured: ❌ → 建议配 mcp__llm-chat__chat
 
 下一步建议（按推荐优先级）：

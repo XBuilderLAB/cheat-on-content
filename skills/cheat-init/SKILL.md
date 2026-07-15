@@ -1,7 +1,7 @@
 ---
 name: cheat-init
 description: cheat-on-content 的首次 onboarding 与脚手架创建器。统一流程——所有用户都走相同 5 阶段闭环，唯一区别是"发过视频的人"会在 init 时多一步：抓取已有视频建立历史 context（用于后续 cheat-seed 给更贴合的选题、更准的 baseline）。触发词："初始化"/"init"/"首次使用"/"我是新用户"/"setup cheat-on-content"。**必须在用户第一次会话执行；其他子 skill 在 .cheat-state.json 不存在时自动路由到此。**
-argument-hint: [— form: opinion-video|long-essay|short-text|podcast]
+argument-hint: "[— form: opinion-video|long-essay|short-text|podcast] [— dir: <data-dir>]"
 allowed-tools: Bash(*), Read, Write, Edit, Glob, WebFetch, Skill
 ---
 
@@ -45,8 +45,11 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, WebFetch, Skill
 
 ### Phase 0: 检测当前状态
 
-1. 读用户当前工作目录（**用户的 content project，不是 cheat-on-content 自己**）
-2. 检查是否已存在 `.cheat-state.json`：
+1. 读用户当前工作目录（**用户的 content project，不是 cheat-on-content 自己**），按以下优先级解析数据目录：显式 `--dir` → `CHEAT_DATA_DIR` → `.cheat-content.json` → 当前目录旧布局。
+   - 显式 `--dir cheat-content` 时，在工作区根创建 `.cheat-content.json`：`{"schema_version":1,"data_dir":"cheat-content"}`。
+   - 已有 `.cheat-state.json` 的旧项目继续使用原布局，不强制搬迁。
+   - 后续所有脚手架、adapter、hook 路径都基于解析后的数据目录；客户数据绝不写进 skill 源码目录。
+2. 检查数据目录是否已存在 `.cheat-state.json`：
    - 存在 → 提示"项目似乎已初始化（state file 存在）。要重新初始化会覆盖现有配置——确认？" 等用户明确确认才继续
    - 不存在 → 进入 Phase 1
 3. 检查是否已存在 `rubric_notes.md` / `predictions/` 等核心文件——存在但 state file 不存在 → 是"半初始化"状态，提示用户并询问"要从现有文件推断状态还是重置？"
@@ -220,12 +223,15 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, WebFetch, Skill
 >
 > 回 yes / no。"
 
-**Q5 → `hooks_installed` 映射**：
+**Q5 → guard 状态映射**：
 
-| 用户答 | `hooks_installed` 写入值 |
-|---|---|
-| yes / enter / 默认 | `true`（bool，**不是字符串 `"yes"`**） |
-| no | `false` |
+| 运行环境 / 用户答 | `guard_scripts_installed` | `hooks_backend` | `hooks_enforced` |
+|---|---:|---|---:|
+| Claude Code + yes | `true` | `"claude-code"` | Phase 4 验证前 `false`，验证成功后 `true` |
+| Codex / 其他 agent + yes | `true` | `"none"` | `false` |
+| 任意环境 + no | `false` | `"none"` | `false` |
+
+Codex 不执行 `.claude/settings.json` hook。可以复制 guard scripts 供审计，但**绝不能**因此把 `hooks_enforced` 写成 true。
 
 默认 yes——除非用户明确说 no。
 
@@ -287,8 +293,8 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
    写入（**所有 `<...>` 占位必须查上面 Q 的映射表换成具体 enum 值，绝不直接存字母**）：
    ```json
    {
-     "schema_version": "1.4",
-     "skill_version": "1.0.0",
+     "schema_version": "1.5",
+     "skill_version": "0.2.0",
      "rubric_version": "v0",
      "content_form": "<查 Q1 映射表，写 enum 字符串如 \"opinion-video\">",
      "typical_duration_seconds": <Q1.5 派生：30/90/240/450/900>,
@@ -302,7 +308,9 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
      "data_collection": "<查 Q3 映射表，写 \"manual\" 或 \"adapter\">",
      "pool_status": "<查 Q4 映射表，写 \"none\"/\"markdown\"/\"notion\">",
      "data_layer": "markdown",
-     "hooks_installed": <查 Q5 映射表，写 bool true/false>,
+     "guard_scripts_installed": <查 Q5 + 运行环境映射>,
+     "hooks_backend": <"claude-code" 或 "none">,
+     "hooks_enforced": false,
      "enabled_trend_sources": ["manual-paste"],
      "enabled_perf_adapters": <Q2.1=a→[\"douyin-session\"]；b→[\"xhs-explore\"]；c→[\"youtube-data-api\"]；d→[\"bilibili-stat\"]；e→[\"linkedin-session\"]；其他→[]>,
      "last_bump_at": null,
@@ -397,13 +405,10 @@ c) 不找 → state 标 `benchmark_status: none`，用通用 v0 起步
 5. **`WORKFLOW.md`** + **`STATUS.md`**
    - 复制 templates/ 对应文件
 
-6. **如果 Q5=是 → 安装 hooks**
-   - 读 `.claude/settings.json`（如不存在则创建空 `{}`）
-   - merge 进 `hooks/prediction-immutability.json` 的 `hooks.PreToolUse`
-   - merge 进 `hooks/session-start.json` 的 `hooks.SessionStart`
-   - merge 进 `hooks/meta-logging.json` 的 hooks（如同时启用）
+6. **如果 Q5=是 → 安装 guard scripts；只有 Claude Code 注册 hooks**
    - 复制 `prediction-immutability.sh` + `session-start.sh` + `log-event.sh` 到 `.cheat-hooks/`，chmod +x
-   - settings.json 里的 command 路径用 `${CLAUDE_PROJECT_DIR}/.cheat-hooks/`
+   - Claude Code：读 `.claude/settings.json`（如不存在则创建空 `{}`），merge 三类 hook，command 路径用 `${CLAUDE_PROJECT_DIR}/.cheat-hooks/`
+   - Codex / 其他 agent：不创建或修改 `.claude/settings.json`，`hooks_backend="none"`、`hooks_enforced=false`
 
 7. **(Pool 选项 c—Notion)** 仅记录到 state file 的 `pool_status: notion`，后续 cheat-trends 调用时再处理
 
@@ -431,7 +436,7 @@ import 完成后：
 - 派生 confidence 等级 → 后续 cheat-predict 写预测时直接用
 - 输出汇总："已 import N 条历史。最近一条 X w 播放，中位数 Y w，已建 N 个 video folder + reconstructed predictions"
 
-### Phase 4: 测试 hook 是否生效（仅当 Q5=是）
+### Phase 4: 测试 hook 是否生效（仅 Claude Code + Q5=是）
 
 跑一次假的 Edit 拦截测试：
 1. 创建临时文件 `predictions/_test_hook.md`，含 `## 预测\n[test]\n## 复盘\n`
@@ -440,7 +445,9 @@ import 完成后：
 4. 删除测试文件
 5. SessionStart hook 验证：直接调一次 `bash .cheat-hooks/session-start.sh` → 应输出报告（即使是空的也行）
 
-如果钩子未生效 → **不要假装成功**，明确告诉用户："钩子安装失败，可能是 .claude/settings.json 配置没生效。建议手动检查或重启 Claude Code。"
+验证成功 → 把 `hooks_enforced` 更新为 `true`。验证失败 → 保持 `false`，**不要假装成功**，明确告诉用户："guard scripts 已复制，但 hook 没有被 harness 强制执行；当前仍是君子协定。"
+
+Codex / 其他 agent 跳过此阶段并明确报告：`hooks_enforced=false`，预测不可变性依靠流程纪律，不是假装存在的物理锁。
 
 ### Phase 4.5: 如 Phase 2.5 选 a → dispatch 到 /cheat-learn-from
 
@@ -498,7 +505,7 @@ cheat-learn-from 完成后回到 init 的 Phase 5。
 
 - 「跳过 Q1-Q5，直接给我创建所有文件」 → 拒绝。问题答案直接影响默认配置（content_form、cadence、hooks）
 - 「我已经在别处初始化过了，把那个项目的配置同步过来」 → 慎重。提示用户手动 cp 现有 `.cheat-state.json` 和 `rubric_notes.md`，不自动跨项目同步
-- 「不装 hook 但保留 immutability 承诺」 → 允许，state 标 `hooks_installed: false`，cheat-status 持续提示"你的 immutability 是君子协定"
+- 「不装 hook 但保留 immutability 承诺」 → 允许，state 标 `hooks_enforced: false`，cheat-status 持续提示"你的 immutability 是君子协定"
 
 ## Integration
 
@@ -511,8 +518,8 @@ cheat-learn-from 完成后回到 init 的 Phase 5。
 
 | 字段 | 写入时机 | 来源 |
 |---|---|---|
-| `schema_version` | Phase 3 | 硬编码 "1.4" |
-| `skill_version` | Phase 3 | 硬编码 "1.0.0" |
+| `schema_version` | Phase 3 | 硬编码 "1.5" |
+| `skill_version` | Phase 3 | 硬编码 "0.2.0" |
 | `rubric_version` | Phase 3 | "v0" |
 | `content_form` | Phase 3 | Q1 → 查映射表换 enum 值（**不是字母**） |
 | `typical_duration_seconds` | Phase 3 | Q1.5 派生 |
@@ -526,7 +533,7 @@ cheat-learn-from 完成后回到 init 的 Phase 5。
 | `data_collection` | Phase 3 | Q3 → 查映射表换 enum 值 |
 | `pool_status` | Phase 3 | Q4 → 查映射表换 enum 值 |
 | `enabled_perf_adapters` | Phase 3 | Q2.1 派生（如 Q2=a 则 `[]`） |
-| `hooks_installed` | Phase 3-4 | Q5 → bool（不是字符串） |
+| `guard_scripts_installed` / `hooks_backend` / `hooks_enforced` | Phase 3-4 | Q5 + agent runtime；只有 Claude Code hook 通过 Phase 4 测试才 enforced=true |
 | `last_bump_at` / `last_published_at` / `last_published_file` / `last_retro_at` / `last_trends_run_at` | Phase 3 | 全部 `null` |
 | `last_bump_self_audited` | Phase 3 | `false` |
 | `last_trends_added_count` | Phase 3 | `0` |

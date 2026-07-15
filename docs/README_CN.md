@@ -110,6 +110,14 @@
 
 ---
 
+## 💼 可售卖的账号体检
+
+已有 20–50 篇内容的创作者可以直接说 `给这个账号做体检`。系统会从本人账号历史生成中位数基线、可追溯的 Top/Bottom 证据、三个可证伪增长假设和四周实验计划。历史分析永远标 `reconstructed`，不会冒充盲预测，也不会增加校准样本。
+
+[商业化内测手册](COMMERCIAL_PILOT_CN.md) 已把它包装成 ¥999 单次体检与 ¥2,999 四周校准服务。卖的是判断升级，不是爆款保证。
+
+---
+
 ## 📦 安装
 
 ```bash
@@ -118,15 +126,22 @@ cd cheat-on-content
 bash install.sh
 ```
 
-> ⚠️ **从 v0.x 升级？** `git pull` 后在你的内容项目里跑 `/cheat-migrate`。**1.3 → 1.4 是 blind channel 完整性 BREAKING 修复**——拆分 `rubric_notes.md` 防止 blind sub-agent 通过白名单读到实绩。不跑迁移的话 blind 打分会持续标 `non_blind_warning`。详见 [CHANGELOG](../CHANGELOG.md) 和 [migrations/1.3-to-1.4.md](../migrations/1.3-to-1.4.md)。
+> ⚠️ **从 v0.x 升级？** `git pull` 后跑 `/cheat-migrate`。迁移链包含 1.3 → 1.4 的 blind channel 完整性修复，以及 1.4 → 1.5 的 agent runtime 真实性修复。详见 [CHANGELOG](../CHANGELOG.md) 和 [迁移注册表](../migrations/registry.md)。
 
-14 个子 skill 软链接到你 agent 的 skill 目录。装一次，所有内容项目都能用。
+16 个子 skill 软链接到你 agent 的 skill 目录。装一次，所有内容项目都能用。
 
 **支持的 agent**：Claude Code（默认）· Codex（`bash install.sh --codex`）· 两个都装（`bash install.sh --all`）
 
 > 冻结版本：`bash install.sh --copy` / `bash install.sh --codex --copy`
 >
 > 卸载：`bash uninstall.sh` / `bash uninstall.sh --codex`（不动你的内容数据）
+
+Windows 核心流程不需要 WSL：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/cheat.ps1 --project C:\content init --agent codex --dir cheat-content
+powershell -ExecutionPolicy Bypass -File tools/cheat.ps1 --project C:\content status
+```
 
 ---
 
@@ -138,7 +153,7 @@ bash install.sh
 初始化 cheat-on-content
 ```
 
-5 个 yes/no 搞定 onboarding。**强烈建议导对标账号**——5-10 条样本 → 工具立刻有 anchor，不然前 5 篇预测精度 ±50%。
+5–6 个短问题搞定 onboarding。**强烈建议导对标账号**——5-10 条样本 → 工具立刻有 anchor，不然前 5 篇预测精度 ±50%。
 
 ---
 
@@ -151,9 +166,10 @@ bash install.sh
 已发布 https://...                → buffer -1
 复盘 videos/<...>/                → T+3d 数据回收 + 复盘
 状态 / 抓热点 / 找选题 / 升级 rubric / 找对标
+给这个账号做体检                    → 20–50 篇历史诊断 + 四周实验计划
 ```
 
-支持 hook 的 agent 每次开会话自动报告 buffer + 待复盘 + top 候选——你不用主动问。其他 agent 直接说 `状态` 即可。
+Claude Code 可以通过其 hook backend 强制预测锁并自动报告。Codex 和其他 agent 在没有真实 harness 时必须显示“君子协定”；说 `状态` 查看真实状态。
 
 完整工作流 + 子 skill 细节见 [SKILL.md](../SKILL.md)。
 

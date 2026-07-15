@@ -110,6 +110,14 @@ General LLMs help everyone. This helps **your** account.
 
 ---
 
+## 💼 Productized account audit
+
+For creators with 20–50 published posts, say `account audit` to turn creator-owned history into a median-based baseline, traceable Top/Bottom evidence, three falsifiable growth hypotheses, and a four-week experiment plan. Historical analysis is always marked `reconstructed`; it never pretends to be a blind prediction or increments calibration samples.
+
+The included [commercial pilot playbook](docs/COMMERCIAL_PILOT_CN.md) packages this as a ¥999 one-off audit or a ¥2,999 four-week calibration service. It is decision calibration, not a viral guarantee.
+
+---
+
 ## 📦 Install
 
 ```bash
@@ -118,15 +126,22 @@ cd cheat-on-content
 bash install.sh
 ```
 
-> ⚠️ **Upgrading from v0.x?** Run `/cheat-migrate` in your content project after `git pull`. The 1.3 → 1.4 migration is **BREAKING for blind-channel integrity** — it splits `rubric_notes.md` so the blind sub-agent can't leak actuals. Without migrate, blind scoring will keep flagging `non_blind_warning`. See [CHANGELOG](CHANGELOG.md) and [migrations/1.3-to-1.4.md](migrations/1.3-to-1.4.md).
+> ⚠️ **Upgrading from v0.x?** Run `/cheat-migrate` after `git pull`. The migration chain includes the breaking 1.3 → 1.4 blind-channel fix and the 1.4 → 1.5 agent-runtime truth fix. See [CHANGELOG](CHANGELOG.md) and [migrations](migrations/registry.md).
 
-14 sub-skills are symlinked into your agent's skill directory. One install, every content project gets it.
+16 sub-skills are symlinked into your agent's skill directory. One install, every content project gets it.
 
 **Supported agents**: Claude Code (default) · Codex (`bash install.sh --codex`) · Both (`bash install.sh --all`)
 
 > Frozen version: `bash install.sh --copy` / `bash install.sh --codex --copy`
 >
 > Uninstall: `bash uninstall.sh` / `bash uninstall.sh --codex` (your content data is not touched)
+
+Windows core workflows do not require WSL:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools/cheat.ps1 --project C:\content init --agent codex --dir cheat-content
+powershell -ExecutionPolicy Bypass -File tools/cheat.ps1 --project C:\content status
+```
 
 ---
 
@@ -140,7 +155,7 @@ In your content project directory, open a skill-compatible agent and say:
 
 (or `init cheat-on-content`)
 
-Five yes/no questions complete onboarding. **Strongly recommend importing a benchmark account** — 5–10 samples and the tool gets an anchor immediately. Without one, your first 5 predictions land at ±50% precision.
+Five to six short questions complete onboarding. **Strongly recommend importing a benchmark account** — 5–10 samples and the tool gets an anchor immediately. Without one, your first 5 predictions land at ±50% precision.
 
 ---
 
@@ -153,9 +168,10 @@ shot scripts/<...>.md             → create video folder + buffer +1
 shipped https://...                → buffer -1
 retro videos/<...>/                → T+3d data + retrospective
 status / fetch trends / find topic / bump rubric / find benchmark
+account audit                       → 20–50 post diagnostic + four-week experiments
 ```
 
-Hook-aware agents auto-report buffer + pending retros + top candidates at every session start — no need to ask. Other agents: just say `status`.
+Claude Code can enforce and auto-report through its hook backend. Codex and other agents report the guard as honor-system unless a real harness enforces it; say `status` to inspect the truth.
 
 Full workflow + sub-skill details: see [SKILL.md](SKILL.md).
 

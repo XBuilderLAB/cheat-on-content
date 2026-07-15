@@ -8,6 +8,32 @@ All notable changes to cheat-on-content will be documented here.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-07-15
+
+### Added — 可售卖的账号体检
+
+- 新增 `cheat-audit`：分析本人账号最近 20–50 篇内容，固定生成 `account-audit.json`、`account-audit.md`、`four-week-experiments.md`。
+- 新增零依赖确定性分析引擎：指标标准化、去重、中位数/P25/P75、Top/Bottom、选题/开头模式、评论受众信号、三个可证伪假设。
+- 历史分析硬标 `reconstructed` + `calibration_samples_increment=0`，不能冒充盲预测。
+- 新增 ¥999 单次体检 / ¥2,999 四周服务的 intake、交付 SOP、30 天内测看板。
+
+### Added — Windows 与隔离数据目录
+
+- 新增 `tools/cheat_cli.py` 与 `tools/cheat.ps1`，Windows 无需 WSL 即可运行 init/status/migrate/audit。
+- 支持 `.cheat-content.json` 隔离目录；解析优先级为显式 `--dir` → `CHEAT_DATA_DIR` → 指针文件 → 旧布局。
+- xhs/douyin/bilibili/linkedin adapter 统一识别隔离数据目录。
+
+### Changed — schema 1.4 → 1.5（agent runtime 真实性）
+
+- `hooks_installed` 拆为 `guard_scripts_installed`、`hooks_backend`、`hooks_enforced`。
+- Codex 不再错误声称 `.claude/settings.json` hook 已生效；未被 harness 强制时明确显示“君子协定”。
+- 用户可见的 `claude` / `main-claude-self` 标识改为 agent-neutral。
+- 迁移指南：[migrations/1.4-to-1.5.md](migrations/1.4-to-1.5.md)。
+
+### Fixed — strict skill loader compatibility
+
+- 所有 flow-style `argument-hint` 均改为明确字符串，兼容 GitHub Copilot CLI 等严格 frontmatter loader。
+
 ### Added — xhs-explore adapter: 公开页兜底、正文/图片归档、账号汇总
 
 - 融合 [xhs-analytics](https://github.com/SingularGuyLeBorn/xhs-analytics) 的公开页解析能力：

@@ -7,6 +7,8 @@ allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill
 
 # /cheat-retro — 数据回收与复盘
 
+> **Data root：**任何读写前都按显式 `--dir` → `CHEAT_DATA_DIR` → `.cheat-content.json` → 当前目录解析数据目录。详见 [data-directory-protocol.md](../../shared-references/data-directory-protocol.md)。
+
 抓 T+N 天的实际表现 → 对比预测 → 提炼新观察 → 写入 rubric-memo.md。**只追加 `## 复盘` 段，绝不改预测段**。`rubric_notes.md` 是 blind 白名单，只能保存通用公式、维度定义和抽象规则，不能写入样本名、实绩、评论、链接或播放/阅读数。
 
 ## Overview
@@ -100,7 +102,7 @@ allowed-tools: Bash(*), Read, Edit, Write, Glob, Grep, Skill
 | `bilibili` | `adapters/perf-data/bilibili-stat/` | `bash <adapters-dir>/bilibili-stat/run.sh <bvid> <video_folder>` |
 | 其他 | 无 adapter | 优雅降级到 Path A |
 
-> `<adapters-dir>` = 克隆源码处的 `cheat-on-content/adapters/perf-data/`（install.sh **不**复制 adapter 到 ~/.claude/skills，只复制 15 个 skill）。定位：`find ~ -path '*/cheat-on-content/adapters/perf-data' -type d | head -1`。
+> `<adapters-dir>` = 克隆源码处的 `cheat-on-content/adapters/perf-data/`（install.sh **不**复制 adapter 到 agent skill 目录，只复制 16 个 skill）。定位：`find ~ -path '*/cheat-on-content/adapters/perf-data' -type d | head -1`。
 
 **douyin-session 的特殊处理**：
 - 视频 URL（如 `https://v.douyin.com/abc123`）→ 短链解析 → 提取 aweme_id

@@ -7,10 +7,10 @@
 ## 文件位置
 
 ```
-<user-content-project>/.cheat-state.json
+<resolved-cheat-data-dir>/.cheat-state.json
 ```
 
-**绝不**放到全局 `~/.claude/` 或 cheat-on-content 自己的目录——一个用户可能维护多个内容项目，每个项目独立状态。
+数据目录解析优先级固定为：显式 `--dir` → `CHEAT_DATA_DIR` → 工作区 `.cheat-content.json` → 当前目录旧布局。**绝不**放到全局 agent 目录或 cheat-on-content 自己的源码目录——一个用户可能维护多个内容项目，每个项目独立状态。
 
 ---
 
@@ -18,8 +18,8 @@
 
 ```json
 {
-  "schema_version": "1.4",
-  "skill_version": "1.0.0",
+  "schema_version": "1.5",
+  "skill_version": "0.2.0",
 
   "rubric_version": "v0",
   "content_form": "opinion-video",
@@ -38,7 +38,9 @@
   "pool_status": "none",
   "data_layer": "markdown",
 
-  "hooks_installed": false,
+  "guard_scripts_installed": false,
+  "hooks_backend": "none",
+  "hooks_enforced": false,
   "enabled_trend_sources": ["manual-paste"],
   "enabled_perf_adapters": [],
 
@@ -62,6 +64,16 @@
 }
 ```
 
+### 关键变更（v1.5）
+
+相比 v1.4（MINOR，但修复跨 agent 语义）：
+
+- `hooks_installed` 拆为 `guard_scripts_installed`、`hooks_backend`、`hooks_enforced`。
+- `hooks_enforced=true` 只表示当前 harness 已实际注册并验证预测锁；复制脚本不等于强制生效。
+- Codex 当前写 `hooks_backend="none"`、`hooks_enforced=false`，不得把 `.claude/settings.json` 当作 Codex 能执行的 hook。
+- 工作区可用 `.cheat-content.json` 把所有运行数据隔离到子目录；旧项目保持兼容。
+- 详见 [migrations/1.4-to-1.5.md](../migrations/1.4-to-1.5.md)。
+
 ### 关键变更（v1.4）
 
 相比 v1.3（**MINOR but BREAKING for blind channel integrity**——老用户必须跑 migrate）：
@@ -76,7 +88,7 @@
 
 相比 v1.2（MINOR，兼容）：
 
-- **新增 `last_prediction_self_scored: bool`**——`true` 仅当上一次 `/cheat-predict` 走了 `--skip-blind` flag 或 Phase 2.5 用户选 b（信主 Claude 自估）。cheat-status / SessionStart hook 据此 nag："上次预测没走 blind sub-agent，已 N 天"
+- **新增 `last_prediction_self_scored: bool`**——`true` 仅当上一次 `/cheat-predict` 走了 `--skip-blind` flag 或 Phase 2.5 用户选 b（信主 agent 自估）。cheat-status / SessionStart hook 据此 nag："上次预测没走 blind sub-agent，已 N 天"
 - **新增 `last_self_scored_at: ISO 8601 / null`**——`last_prediction_self_scored` 触发时的时间戳；走 sub-agent 时一起清回 null
 - 配合 [skills/cheat-score-blind](../skills/cheat-score-blind/SKILL.md) 的 channel B 隔离协议——把 contamination 跟踪从"靠 git history"升级为"靠 state 字段"
 - 老 state 缺这两字段 → 兜底 `false` / `null`，**MINOR 兼容**
@@ -126,7 +138,9 @@
 | `data_collection` | enum | "manual" / "adapter" | cheat-init | cheat-retro（决定 DATA_SOURCE 默认值） |
 | `pool_status` | enum | "none" / "markdown" / "notion" / "sqlite" | cheat-init / cheat-recommend | cheat-recommend / cheat-status |
 | `data_layer` | enum | "markdown" / "sqlite" | cheat-init / md-to-sqlite.py | 所有读 predictions 的 skill |
-| `hooks_installed` | bool | true / false | cheat-init | cheat-status（持续提示） |
+| `guard_scripts_installed` | bool | true / false | cheat-init / cheat-migrate | cheat-status；只说明脚本已复制，不代表 harness 执行 |
+| `hooks_backend` | enum | "claude-code" / "none" | cheat-init / cheat-migrate | cheat-status / SessionStart；不得虚构 Codex backend |
+| `hooks_enforced` | bool | true / false | cheat-init Phase 4 | cheat-status / SessionStart；只有实际验证成功才为 true |
 | `enabled_trend_sources` | array of string | trend-source adapter 名列表（如 `["weibo-hot", "zhihu-hot"]`） | cheat-init / 用户手动 | cheat-trends |
 | `enabled_perf_adapters` | array of string | perf-data adapter 名列表（如 `["douyin-session"]`）。空 → cheat-retro 走 manual paste | cheat-init / 用户手动配置后 | cheat-retro |
 

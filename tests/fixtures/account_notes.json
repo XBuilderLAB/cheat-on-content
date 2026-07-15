@@ -1,0 +1,15 @@
+{
+  "account_name": "合成测试账号",
+  "source": "synthetic",
+  "notes": [
+    {"note_id":"n01","title":"AI 工具不是越多越好","body":"真正的问题不是工具少，而是你没有判断标准。","tags":["AI判断"],"view_count":1000,"like_count":100,"collect_count":80,"comment_count":20,"share_count":10,"comments":[{"content":"我也装了很多工具，但是没有流程"},{"content":"怎么建立判断标准？"}]},
+    {"note_id":"n02","title":"别再追逐每一个 AI 热点","body":"别再追热点，先问它是否改变你的工作流。","tags":["AI判断"],"view_count":1200,"like_count":130,"collect_count":100,"comment_count":18,"share_count":12,"comments":["同感，我也每天焦虑", "但是热点也会带来流量"]},
+    {"note_id":"n03","title":"3 个内容复盘问题","body":"3 个问题，帮你判断一条内容到底为什么有效。","tags":["内容复盘"],"view_count":800,"like_count":70,"collect_count":120,"comment_count":8,"share_count":9,"comments":["请问表格可以分享吗"]},
+    {"note_id":"n04","title":"为什么发了 100 条还没进步","body":"为什么你发了很多，却没有留下任何预测记录？","tags":["内容复盘"],"view_count":900,"like_count":85,"collect_count":90,"comment_count":25,"share_count":8,"comments":["本人就是这样", "不一定，平台变化也很大"]},
+    {"note_id":"n05","title":"我的第一次盲预测","body":"我昨天第一次在发布前写下了自己的判断。","tags":["创作实验"],"view_count":400,"like_count":30,"collect_count":15,"comment_count":5,"share_count":2,"comments":[]},
+    {"note_id":"n06","title":"一次失败的爆款判断","body":"我以为它会爆，但是数据直接否定了我。","tags":["创作实验"],"view_count":0,"like_count":0,"collect_count":0,"comment_count":0,"share_count":0},
+    {"note_id":"n07","title":"内容判断清单","body":"5 个信号判断一个选题值不值得做。","tags":["内容复盘"],"view_count":"1.5万","like_count":900,"collect_count":1800,"comment_count":100,"share_count":200,"comments":["刚好需要这个清单"]},
+    {"note_id":"n08","title":"没有数据的一条","body":"这条用于测试字段缺失。","tags":[],"like_count":2},
+    {"note_id":"n08","title":"重复项以后者为准","body":"去重以后只保留这一条。","tags":[],"view_count":100,"like_count":3,"audit_fetch_warning":"comments unavailable"}
+  ]
+}

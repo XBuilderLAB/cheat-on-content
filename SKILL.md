@@ -1,6 +1,6 @@
 ---
 name: cheat-on-content
-description: 给所有想把"感觉"变成可校准预测的内容创作者。**方法论通用**——打分 → 盲预测 → T+3d 复盘 → 进化 rubric 的循环适用任何能被量化（播放 / 阅读 / 收听 / 点击）的内容。**rubric 是循环的内容，不是循环本身**——当前内置一份观点视频 rubric（参考博主 25+ 视频拟合），其他形态可借这套起步并 bump 调权重。**强烈建议导入对标账号**作为初始信号源（/cheat-learn-from）。触发词："初始化"/"打分这篇"/"启动预测"/"已发布"/"复盘"/"升级 rubric"/"推荐选题"/"抓热点"/"状态"/"找对标"/"learn from"。**首次使用必须先跑 /cheat-init。**
+description: 给所有想把"感觉"变成可校准预测的内容创作者。**方法论通用**——打分 → 盲预测 → T+3d 复盘 → 进化 rubric。新增可交付的账号体检：把本人账号 20–50 篇历史内容变成基线、证据化假设和四周实验计划；历史分析永远标 reconstructed。触发词："初始化"/"账号体检"/"打分这篇"/"启动预测"/"已发布"/"复盘"/"升级 rubric"/"推荐选题"/"抓热点"/"状态"/"找对标"。**首次使用必须先跑 /cheat-init。**
 argument-hint: "[draft-path] [— mode: cold-start|calibration]"
 allowed-tools: Bash(*), Read, Write, Edit, Grep, Glob, Skill, mcp__llm-chat__chat
 ---
@@ -11,11 +11,9 @@ allowed-tools: Bash(*), Read, Write, Edit, Grep, Glob, Skill, mcp__llm-chat__cha
 >
 > **方法论**（5 阶段闭环）：任何能被量化的内容形态都适用——视频 / 文章 / 播客 / Newsletter / 短文 thread。
 >
-> **当前内置 rubric**：观点类视频（评论 / 时评 / 论说 / 议题讨论 / 个人观点表达），7 个维度由参考博主 25+ 已发样本拟合而来。如果你做其他形态，需要：
-> - 自己写一份 rubric（参照 [starter-rubrics/opinion-video-zero.md](starter-rubrics/opinion-video-zero.md) 的格式）
-> - 或等内置扩展（长文 / 短文 / 播客 starter 在批次 3 路线图）
+> **当前内置 rubric**：观点类视频（评论 / 时评 / 论说 / 议题讨论 / 个人观点表达），7 个维度由参考博主 25+ 已发样本拟合而来。长文、短文、播客、教程和其他形态已有保守的 `*-zero.md` 起步版，仍需用自己的复盘数据 bump 调权重。
 >
-> 默认假设：**用户是从零开始的新人**（一条视频都没发过）——cold-start 期的预测会**简化**，只要 7 维打分 + 一句话 bet，不强求 bucket 数字（避免 false precision）。已有 5+ 篇数据的老手走 calibration 模式解锁完整 7 组件预测。
+> 默认假设：**用户是从零开始的新人**。所有阶段都使用统一预测结构；`calibration_samples` 只改变 confidence 与概率分布宽度，不用隐藏字段或硬模式切换制造虚假精度。
 
 把内容创作变成可校准预测循环：**打分 → 预测 → 发布 → 复盘 → 进化 rubric**。
 
@@ -26,6 +24,7 @@ allowed-tools: Bash(*), Read, Write, Edit, Grep, Glob, Skill, mcp__llm-chat__cha
 Codex 没有 Claude Code 的 slash-command harness。安装到 Codex 后，按自然语言触发同一套路由即可：
 
 - `初始化 cheat-on-content` → 读取并执行 `skills/cheat-init/SKILL.md`
+- `给这个账号做体检` → 读取并执行 `skills/cheat-audit/SKILL.md`
 - `打分这篇 scripts/foo.md` → 读取并执行 `skills/cheat-score/SKILL.md`
 - `启动预测 scripts/foo.md` → 读取并执行 `skills/cheat-predict/SKILL.md`
 - `拍了 ...` / `已发布 ...` / `复盘 ...` / `升级 rubric` / `状态` → 分别读取对应 `skills/cheat-*/SKILL.md`
@@ -51,6 +50,7 @@ Codex 没有 Claude Code 的 slash-command harness。安装到 Codex 后，按�
 | 用户说 | 调用 | 前置条件 |
 |---|---|---|
 | "初始化" / "init" / "首次使用" | `/cheat-init` | 无（这是入口） |
+| "账号体检" / "给这个账号做体检" / "account audit" | `/cheat-audit` | 已 init；本人账号或明确授权；20–50 篇历史数据 |
 | "找对标" / "学这个账号" / "拆这几个对标视频" / "learn from" / "导入对标账号" | `/cheat-learn-from` | 已 init；cold-start 强烈建议；后续可随时 --append / --replace |
 | "找选题" / "我不知道拍什么" / "seed" / "找前 5 个选题" | `/cheat-seed` | 已 init（cold-start 用户专用一次性种子动作） |
 | "打分这篇 [path]" / "score this [path]" | `/cheat-score` | rubric_notes.md 存在 |
@@ -97,30 +97,33 @@ skill 期望用户的项目布局如下。`/cheat-init` 会创建缺失项；**�
 
 ```
 <user-content-project>/
-├── .gitignore                         # cheat-init 创建；挡住 .auth*/.cheat-secrets.json 等凭证
-├── rubric_notes.md                    # 评分规则的真实来源
-├── WORKFLOW.md                        # 5 阶段流程文档（cheat-init 创建）
-├── STATUS.md                          # 看板（cheat-status 维护）
-├── .cheat-state.json                  # 状态文件，子 skill 共享上下文
-├── .cheat-cache/                      # 不入版本控制
-│   ├── usage.jsonl                    # 钩子被动记录的使用日志
-│   └── trends-history.jsonl           # cheat-trends 的去重缓存
-├── .claude/
-│   └── settings.json                  # 含 prediction-immutability hook
-├── benchmark.md                       # 对标账号信息（cheat-learn-from 维护）
-├── audience.md                        # 受众画像（cheat-persona 派生；blind 硬禁读）
-├── scripts/                           # 拍前的所有草稿（cheat-seed 写或用户写）
-│   └── YYYY-MM-DD_<id>_<short>.md
-├── predictions/                       # immutable 预测日志（hook 保护）
-│   └── YYYY-MM-DD_<id>_<short>.md     # 与 scripts/ 同 id
-├── videos/                            # 拍后才建（cheat-shoot 创建）
-│   └── YYYY-MM-DD_<id>_<short>/
-│       ├── script.md                  # 用户提供的最终拍摄稿（cheat-shoot 时询问"和 scripts/ 一致吗"）
-│       └── report.md                  # T+3d 抓的数据 + 评论（cheat-retro 写）
-├── samples/                           # 对标账号视频 / 转录（cheat-learn-from 创建）
-│   └── <账号名>/<video-id>/{source.mp4 (可选), transcript.md, meta.md}
-├── candidates.md                      # 选题池（可选）
-└── content.db                         # 可选 SQLite，校准池规模化后启用
+├── .cheat-content.json                # 可选：指向隔离数据目录；旧布局无此文件
+└── <resolved-cheat-data-dir>/
+    ├── .gitignore                     # cheat-init 创建；挡住 .auth*/.cheat-secrets.json 等凭证
+    ├── rubric_notes.md                # 评分规则的真实来源
+    ├── WORKFLOW.md                    # 5 阶段流程文档（cheat-init 创建）
+    ├── STATUS.md                      # 看板（cheat-status 维护）
+    ├── .cheat-state.json              # 状态文件，子 skill 共享上下文
+    ├── .cheat-cache/                  # 不入版本控制
+    │   ├── usage.jsonl                # 钩子被动记录的使用日志
+    │   └── trends-history.jsonl       # cheat-trends 的去重缓存
+    ├── .claude/                       # 仅 Claude Code hook backend 使用
+    │   └── settings.json              # 含 prediction-immutability hook
+    ├── benchmark.md                   # 对标账号信息（cheat-learn-from 维护）
+    ├── audience.md                    # 受众画像（cheat-persona 派生；blind 硬禁读）
+    ├── scripts/                       # 拍前的所有草稿（cheat-seed 写或用户写）
+    │   └── YYYY-MM-DD_<id>_<short>.md
+    ├── predictions/                   # immutable 预测日志（hook 保护）
+    │   └── YYYY-MM-DD_<id>_<short>.md # 与 scripts/ 同 id
+    ├── videos/                        # 拍后才建（cheat-shoot 创建）
+    │   └── YYYY-MM-DD_<id>_<short>/
+    │       ├── script.md              # 用户提供的最终拍摄稿（cheat-shoot 时询问"和 scripts/ 一致吗"）
+    │       └── report.md              # T+3d 抓的数据 + 评论（cheat-retro 写）
+    ├── samples/                       # 对标账号视频 / 转录（cheat-learn-from 创建）
+    │   └── <账号名>/<video-id>/{source.mp4 (可选), transcript.md, meta.md}
+    ├── deliverables/                  # 账号体检交付物；默认不入 Git
+    ├── candidates.md                  # 选题池（可选）
+    └── content.db                     # 可选 SQLite，校准池规模化后启用
 ```
 
 ---
@@ -135,6 +138,7 @@ cheat-on-content/
 ├── README.md                          # 营销门面
 ├── skills/                            # 子 skill 集
 │   ├── cheat-init/SKILL.md            # ✅ 入口：onboarding 与脚手架
+│   ├── cheat-audit/SKILL.md           # ✅ 本人账号历史体检（reconstructed，不增校准样本）
 │   ├── cheat-learn-from/SKILL.md      # ✅ 对标账号导入（拆 pattern + 派生 base rubric 信号）
 │   ├── cheat-seed/SKILL.md            # ✅ Cold-start 选题启动器（brainstorm + 可选 draft）
 │   ├── cheat-score/SKILL.md           # ✅ 单稿打分（不写文件）
@@ -160,15 +164,20 @@ cheat-on-content/
 │   ├── candidate-schema.md            # ✅ 候选项统一 schema
 │   ├── cadence-protocol.md            # ✅ 节奏协议（buffer 警戒 + 选题策略）
 │   ├── state-management.md            # ✅ .cheat-state.json 读写约定
-│   └── migration-protocol.md          # ✅ schema 演进哲学 + maintainer checklist
+│   ├── migration-protocol.md          # ✅ schema 演进哲学 + maintainer checklist
+│   └── data-directory-protocol.md     # ✅ workspace/data root 解析与兼容约定
 ├── starter-rubrics/                   # 各内容形态的先验 rubric
 │   ├── opinion-video.md               # ✅ 观点视频（中文，已校准 25+ 样本）
 │   ├── opinion-video-zero.md          # ✅ v0 等权占位（cold-start）
-│   ├── long-form-essay.md             # ⬜ 公众号 / Substack
-│   └── short-form-text.md             # ⬜ X thread / 微博长文
+│   ├── long-essay-zero.md             # ✅ 公众号 / Substack 起步版
+│   ├── short-text-zero.md             # ✅ X thread / 微博长文起步版
+│   ├── podcast-zero.md                # ✅ 播客起步版
+│   ├── tutorial-builder-zero.md       # ✅ 教程 / builder 内容起步版
+│   └── other-zero.md                  # ✅ 其他形态保守占位版
 ├── templates/                         # skill 写进用户 repo 的文件骨架
 │   ├── gitignore.template             # ✅ 用户项目 .gitignore（护凭证，保留 predictions/ 入库）
 │   ├── rubric_notes.template.md       # ✅
+│   ├── rubric-memo.template.md        # ✅ blind channel 外的升级证据 Memo
 │   ├── prediction.template.md         # ✅ 统一版（所有阶段，含 confidence header）
 │   ├── retro.template.md              # ✅
 │   ├── candidates.template.md         # ✅
@@ -178,6 +187,9 @@ cheat-on-content/
 │   ├── audience.template.md           # ✅ 受众画像骨架
 │   ├── workflow.template.md           # ✅
 │   ├── status.template.md             # ✅
+│   ├── commercial-intake.template.md  # ✅ ¥999/¥2999 客户授权与输入
+│   ├── commercial-delivery-sop.template.md # ✅ 60 分钟交付 SOP
+│   ├── commercial-pilot-scorecard.template.md # ✅ 30 天付费验证门槛
 │   └── content.db.schema.sql          # ✅
 ├── hooks/                             # harness 强制层
 │   ├── prediction-immutability.json   # ✅ 阻塞型钩子（拦预测段编辑）
@@ -187,12 +199,14 @@ cheat-on-content/
 │   ├── meta-logging.json              # ✅ 被动记录配置
 │   └── log-event.sh                   # ✅ meta-logging 脚本
 ├── tools/                             # 独立 CLI 脚本
-│   ├── score-curve.py                 # ⬜ 预测精度收敛曲线
-│   ├── md-to-sqlite.py                # ⬜ markdown → content.db 升级（批次 3）
-│   └── validate-bump.py               # ⬜ 校准池全量重打（批次 3）
+│   ├── cheat_cli.py                   # ✅ 跨平台 init/status/migrate/audit
+│   ├── cheat.ps1                      # ✅ Windows 原生入口
+│   ├── cheat_paths.py                 # ✅ data root 单一解析逻辑
+│   ├── cheat_audit.py                 # ✅ 确定性账号体检引擎
+│   ├── diff_pct.py                    # ✅ 拍前/拍后稿件差异
+│   └── score-curve.py                 # ✅ 预测精度收敛曲线
 ├── adapters/                          # 数据源适配
-│   ├── perf-data/                     # 复盘数据源（含 douyin-session）
-│   ├── candidate-pool/                # 候选池数据源
+│   ├── perf-data/                     # 复盘数据源（含 xhs/douyin/bilibili/linkedin）
 │   ├── trend-sources/                 # 热点抓取源
 │   └── script-extraction/             # 视频/音频转 script（含 whisper for cheat-learn-from）
 └── examples/

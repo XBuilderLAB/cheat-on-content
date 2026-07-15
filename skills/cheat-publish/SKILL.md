@@ -7,6 +7,8 @@ allowed-tools: Bash(*), Read, Edit, Glob
 
 # /cheat-publish — 发布登记
 
+> **Data root：**任何读写前都按显式 `--dir` → `CHEAT_DATA_DIR` → `.cheat-content.json` → 当前目录解析数据目录。详见 [data-directory-protocol.md](../../shared-references/data-directory-protocol.md)。
+
 把作品的发布元数据（URL、发布时间、平台）补到预测文件 header 与 state file。**禁止改预测段**——hook 会拦。
 
 ## Overview

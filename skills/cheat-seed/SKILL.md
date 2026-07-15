@@ -7,6 +7,8 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, WebFetch, Skill
 
 # /cheat-seed — 选题对话（默认）/ 批量 brainstorm（可选）
 
+> **Data root：**任何读写前都按显式 `--dir` → `CHEAT_DATA_DIR` → `.cheat-content.json` → 当前目录解析数据目录。详见 [data-directory-protocol.md](../../shared-references/data-directory-protocol.md)。
+
 cheat-seed 的核心是**跟用户讨论选题**，不是机械地 brainstorm。好内容来自用户的真实经历 + 观察 + 情绪——这些是 AI 不可能凭空 brainstorm 出来的。AI 的角色是**听用户讲 → 帮提炼角度 → 写一份 draft**，不是 dump 15 候选让用户挑。
 
 **默认模式**：对话式一次一个。
@@ -309,7 +311,7 @@ Mode A 默认深挖用户经历。但如果**用户讲的本身是时事话题**
 ```markdown
 # [立意标题]
 
-> ⚠️ **Draft by Claude — 你必须改写后再拍**
+> ⚠️ **Draft by Agent — 你必须改写后再拍**
 >
 > 这是脚手架，不是成品。你的语气 / 节奏 / 个人经历无法 AI 生成。
 > 改写流程：
@@ -362,14 +364,14 @@ avg_chars_per_line=$(( char_count / (line_count > 0 ? line_count : 1) ))
 
 #### Phase 4.5b: humanizer 去 AI 味
 
-`HUMANIZE_DRAFT=on`（默认）—— 用 `humanizer` skill 过一遍。Claude 自己写的初稿天然带 AI tells（em-dash 滥用 / rule of three / "inflated" 词汇 / 空泛归因 / -ing 浅层分析），这一步把它们清掉。
+`HUMANIZE_DRAFT=on`（默认）—— 用 `humanizer` skill 过一遍。主 agent写的初稿天然带 AI tells（em-dash 滥用 / rule of three / "inflated" 词汇 / 空泛归因 / -ing 浅层分析），这一步把它们清掉。
 
 步骤：
 
 1. 检查 `humanizer` skill 是否可用（`~/.claude/skills/humanizer/` 存在）：
    - 不可用 → 跳过 4.5b，在 Phase 5 输出里加一行"（humanizer 未装，draft 是原始 AI 版——`git clone https://github.com/blader/humanizer` 到 ~/.claude/skills/ 可启用自动去 AI 味）"
 2. 可用 → 通过 Skill tool 调 `humanizer`，**只传 draft 正文**（`---` 分隔线之后、4.5a 已重排好的段落版），**绝不传 header**：
-   - header 的 `⚠️ Draft by Claude — 你必须改写后再拍` 警告是**有意的脚手架标记**，不是要 humanize 的散文
+   - header 的 `⚠️ Draft by Agent — 你必须改写后再拍` 警告是**有意的脚手架标记**，不是要 humanize 的散文
    - **voice calibration**：如果用户有历史脚本（`videos/*/script.md`）或填过 `script_patterns.md`，把最近 1-2 份作为 humanizer 的 voice 参考样本一起传——让它往"**这个用户的声音**"靠，而不是"通用人声"
 3. humanizer 返回去 AI 味的正文 → 用 Edit 替换 draft 文件的正文段（header 不动）
 4. 记录 humanizer 报告的"修了哪些 tell"（如 `em-dash 滥用 ×3 / rule of three ×2 / inflated 词汇: "深刻" "本质上"`），Phase 5 输出里展示

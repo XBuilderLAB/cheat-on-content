@@ -7,6 +7,8 @@ allowed-tools: Read, Glob, Grep
 
 # /cheat-recommend — 候选池排序推荐
 
+> **Data root：**任何读写前都按显式 `--dir` → `CHEAT_DATA_DIR` → `.cheat-content.json` → 当前目录解析数据目录。详见 [data-directory-protocol.md](../../shared-references/data-directory-protocol.md)。
+
 读 candidates.md → 按 composite 排序 → 输出 top N 推荐，每条带评分细节 + 锚点对比 + 推荐理由。
 
 ## Overview

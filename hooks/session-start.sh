@@ -27,20 +27,37 @@ parse_iso_epoch() {
     || echo 0
 }
 
-PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
-STATE_FILE="$PROJECT_DIR/.cheat-state.json"
-
-# Silently skip if not a cheat-on-content project
-if [[ ! -f "$STATE_FILE" ]]; then
-  exit 0
-fi
-
 # Skip if jq missing (Claude can still read state.json himself in conversation)
 if ! command -v jq >/dev/null 2>&1; then
   cat <<'EOF'
 [cheat-on-content] SessionStart: jq not installed — skipping auto status report.
 Claude can still read .cheat-state.json directly. Say "状态" for full status.
 EOF
+  exit 0
+fi
+
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-.}"
+DATA_DIR="$PROJECT_DIR"
+if [[ -n "${CHEAT_DATA_DIR:-}" ]]; then
+  if [[ "$CHEAT_DATA_DIR" = /* ]]; then
+    DATA_DIR="$CHEAT_DATA_DIR"
+  else
+    DATA_DIR="$PROJECT_DIR/$CHEAT_DATA_DIR"
+  fi
+elif [[ -f "$PROJECT_DIR/.cheat-content.json" ]]; then
+  pointer_dir=$(jq -r 'select(.schema_version == 1) | .data_dir // empty' "$PROJECT_DIR/.cheat-content.json" 2>/dev/null || true)
+  if [[ -n "$pointer_dir" ]]; then
+    if [[ "$pointer_dir" = /* ]]; then
+      DATA_DIR="$pointer_dir"
+    else
+      DATA_DIR="$PROJECT_DIR/$pointer_dir"
+    fi
+  fi
+fi
+STATE_FILE="$DATA_DIR/.cheat-state.json"
+
+# Silently skip if not a cheat-on-content project
+if [[ ! -f "$STATE_FILE" ]]; then
   exit 0
 fi
 
@@ -57,7 +74,8 @@ buffer_count=$(echo "$state" | jq -r '.shoots // [] | length')
 pending_retros_count=$(echo "$state" | jq -r '.pending_retros // [] | length')
 last_trends_at=$(echo "$state" | jq -r '.last_trends_run_at // ""')
 last_published_at=$(echo "$state" | jq -r '.last_published_at // ""')
-hooks_installed=$(echo "$state" | jq -r '.hooks_installed // false')
+hooks_enforced=$(echo "$state" | jq -r '.hooks_enforced // (.hooks_installed // false)')
+hooks_backend=$(echo "$state" | jq -r '.hooks_backend // "legacy"')
 form_severe_mismatch=$(echo "$state" | jq -r '.rubric_form_severe_mismatch // false')
 last_prediction_self_scored=$(echo "$state" | jq -r '.last_prediction_self_scored // false')
 last_self_scored_at=$(echo "$state" | jq -r '.last_self_scored_at // ""')
@@ -65,7 +83,7 @@ last_self_scored_at=$(echo "$state" | jq -r '.last_self_scored_at // ""')
 # --- Detect schema mismatch (read LATEST_SCHEMA from migrations/registry.md if reachable) ---
 # Strategy: hardcode current LATEST_SCHEMA here (bumped by maintainer alongside cheat-init).
 # If state.schema_version != LATEST_SCHEMA → suggest migrate (non-blocking).
-LATEST_SCHEMA="1.4"
+LATEST_SCHEMA="1.5"
 schema_mismatch=""
 if [[ "$schema_version" != "$LATEST_SCHEMA" && "$schema_version" != "unknown" ]]; then
   schema_mismatch="⚠️  schema 版本不一致：state=${schema_version}, skill 期望=${LATEST_SCHEMA}。建议跑 /cheat-migrate（非阻塞，部分新功能可能在迁移前异常）。"
@@ -132,7 +150,7 @@ earliest_due=""
 if [[ "$pending_retros_count" -gt 0 ]]; then
   # Walk pending_retros, check each prediction file's published_at
   while IFS= read -r pred_file; do
-    pred_path="$PROJECT_DIR/$pred_file"
+    pred_path="$DATA_DIR/$pred_file"
     if [[ -f "$pred_path" ]]; then
       pub_iso=$(grep -E '^\*\*Published at\*\*:' "$pred_path" 2>/dev/null | head -1 | sed -E 's/.*: *//')
       if [[ -n "$pub_iso" ]]; then
@@ -161,7 +179,7 @@ else
 fi
 
 # --- Top candidates (read first 3 H3 from candidates.md) ---
-candidates_file="$PROJECT_DIR/candidates.md"
+candidates_file="$DATA_DIR/candidates.md"
 top_candidates=""
 if [[ -f "$candidates_file" ]]; then
   # Extract first 3 H3 titles, format compactly
@@ -207,8 +225,8 @@ echo "📈 校准样本: ${calibration_samples} | Confidence: ${confidence}"
 if [[ "$form_severe_mismatch" == "true" ]]; then
   echo "❌ rubric 与你的内容形态严重不匹配——预测几乎无意义。"
 fi
-if [[ "$hooks_installed" != "true" ]]; then
-  echo "⚠️  immutability hook 未装——你的盲预测保护是君子协定，不是物理强制。"
+if [[ "$hooks_enforced" != "true" ]]; then
+  echo "⚠️  immutability 未由 harness 强制（backend: ${hooks_backend}）——当前是君子协定。"
 fi
 
 echo ""

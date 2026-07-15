@@ -7,6 +7,8 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, WebFetch, Skill
 
 # /cheat-trends — 热点抓取
 
+> **Data root：**任何读写前都按显式 `--dir` → `CHEAT_DATA_DIR` → `.cheat-content.json` → 当前目录解析数据目录。详见 [data-directory-protocol.md](../../shared-references/data-directory-protocol.md)。
+
 多 adapter 模式：读各 `trend-sources` adapter 的输出 → 去重 → 粗打分 → 写入 `candidates.md`。
 
 ## Overview
