@@ -11,7 +11,8 @@ if [[ -z "$POST_ID" || -z "$VIDEO_FOLDER" ]]; then
 fi
 
 ADAPTER_DIR="$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
-VIDEO_FOLDER_REAL="$( realpath -m "$VIDEO_FOLDER" )"
+mkdir -p "$VIDEO_FOLDER"
+VIDEO_FOLDER_REAL="$( cd "$VIDEO_FOLDER" && pwd )"
 
 find_project_root() {
   local dir
@@ -65,7 +66,6 @@ if [[ ! -d "$PROJECT_ROOT/.auth-wechat-channels" ]]; then
   exit 1
 fi
 
-mkdir -p "$VIDEO_FOLDER_REAL"
 cd "$PROJECT_ROOT"
 export CHEAT_PROJECT_ROOT="$PROJECT_ROOT"
 export CHEAT_VIDEOS_DIR="$( dirname "$VIDEO_FOLDER_REAL" )"
