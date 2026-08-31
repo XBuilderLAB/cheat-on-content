@@ -14,7 +14,7 @@ douyin-session 用 **Playwright + 持久化 Chromium context** 模拟真实浏�
 - 你首次扫码登录抖音创作者中心，cookie 存在**你的内容项目根目录** `.auth/`
 - 之后每次抓取直接复用 cookie，不用重新登录
 - 拦截抖音前端的 XHR responses 直接抓数据接口的 JSON（不解析 HTML）
-- 抓 3 类数据：视频列表 / 详细数据（完播 / 转粉率）/ 评论
+- 抓 3 类数据：视频列表 / 作品详情数据（总览 / 流量分析 / 观众分析 / 评论热词等）/ 评论
 
 输出写到**你的内容项目** `videos/<...>/report.md`（`cheat-retro` 读这个文件 → 摘要写到 prediction 复盘段）。
 调试产物（URL dump / 截图）写到 `.cheat-cache/douyin-session-debug/`，避免散落在 skill 源码目录。
@@ -74,7 +74,7 @@ cheat-publish 会在登记发布时把 aweme_id 存到 prediction header（如�
 由 `renderer.py` 生成。包含：
 - 视频元信息（标题、发布时间、时长）
 - 数据快照（播放、点赞、评论、转发、收藏 + 派生比率：赞播比 / 评播比 / 分播比）
-- 完播率 / 3s 留存（如能抓到）
+- 创作者中心详细指标：完播率 / 5s 完播率 / 2s 划走率 / 文案展开率 / 平均浏览图片数 / 粉丝播放占比（如能抓到）
 - Top 20 评论（按赞数排序，含评论文本 + 赞数）
 - 评论关键词聚类（renderer 自动做，可选）
 
@@ -84,6 +84,7 @@ cheat-publish 会在登记发布时把 aweme_id 存到 prediction header（如�
 |---|---|---|
 | `ensure_login` 超时 | cookie 过期或抖音强制 reauth | 重新跑 `python crawler.py login` |
 | `_parse_video_list` 返回空 | 抖音改了接口字段——结构性变化 | 看 `.debug/creator_urls.txt` 抓到的 URL，更新 crawler.py 的字段兜底 |
+| 详细数据接口没拦到 | 作品详情页路由或接口改版 | 先确认作品详情页是否仍是 `/creator-micro/work-management/work-detail/<aweme_id>?enter_from=content`，再看 `.debug/detail_urls.txt` 更新 `fetch_video_detail` 的匹配规则 |
 | `_parse_video_list` 视频列表不全 | 翻页没抓到——网络慢或反爬触发 | 调高 `crawler.py` 里的 `await asyncio.sleep(...)` 时长 |
 | Chromium 崩溃 / 卡死 | 通常是机器内存不足 | 关闭其他 Chromium 进程；`playwright install chromium --force` 重装 |
 | 评论抓取慢（>5min） | 评论页 XHR 多次滚动触发——慢网络 | 调小 `fetch_comments_creator` 的 `max_pages`，或换更稳的网络 |
