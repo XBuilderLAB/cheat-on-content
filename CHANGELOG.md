@@ -46,6 +46,23 @@ All notable changes to cheat-on-content will be documented here.
 
 **Known limitations**（写进 cheat-persona/SKILL.md）：评论 ≠ 全部受众（偏向会评论的活跃少数）；评论可被水军污染；persona 滞后于真实受众变化；不替用户做"想要的受众 vs 实际受众"的战略决策。
 
+### Added — 双档复盘 T+3 + T+6 (cheat-retro skill)
+
+**动机**：单 T+3 复盘漏掉 ~50% 长尾型爆款数据。实战案例：账号"增删卜易 vs 易冒"视频 T+3 累计 5.6w（桶判定"命中"），T+6 累计 11.4w（桶判定"小爆"）—— T+3→T+6 翻倍。T+3 单独看会严重低估算法二次分发。
+
+**设计**：
+- `RETRO_WINDOWS = [3, 6]` 取代单 `RETRO_WINDOW_DAYS = 3`（向后兼容）
+- 新常量 `TRAJECTORY_TYPES = [脉冲型, 长尾型, 横盘型, 慢热型]`
+- 新常量 `TRAJECTORY_WEIGHTS = {脉冲: 0.5, 横盘: 1.0, 慢热: 1.5, 长尾: 2.0}` 供 cheat-bump 校准
+- 双档 workflow: T+3 抓（第一次判定）→ T+6 抓（追加第二次判定 + 轨迹类型确认）
+- T+6 复盘**追加**到 report.md，**不覆盖** T+3 数据
+- cheat-bump 校准池按 trajectory_type 加权
+
+**破坏性变更**：无。旧单 T+3 调用仍可用（`— window: 3`）。默认走双档。
+
+**作者动机**：原作者账号 5.7w → 11.4w 翻倍数据证明单 T+3 严重低估。
+
+
 ### Fixed — cheat-seed draft 写成字幕格式（一句一行）
 
 **问题**：用户反馈 cheat-seed 写的 draft 正文是"一句话一行"的字幕格式，而不是段落版。根因不是文档缺失——"不要字幕格式"的指令在 4 个文件里都有，但**全是散文指令**。生成 draft 那一刻，模型"video script = 提词器短行"的训练先验压过了埋在 Phase 4 散文里的一句话。
