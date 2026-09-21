@@ -20,6 +20,18 @@ cheat-shoot 自己**不**写预测内容——所有预测落盘逻辑在 cheat-
 - "实际拍摄稿" ≠ "pre-shoot 草稿"是常态。这一步是把 diff 显式化、触发 v2 重判、采集"用户改稿 pattern"信号的入口
 - v2 预测 vs v1 预测的差异本身就是 rubric 升级证据——比如 v1 给 ER=4，v2 给 ER=5（用户改稿改高了 hook 强度），就告诉 rubric "这个用户的 ER 阈值跟我现在公式不一致"
 
+## 格式守卫
+
+cheat-shoot 仅适用于视频内容。
+
+1. 读 `.cheat-state.json` 的 `content_form`
+2. 如果用户指定了 `--format`，用用户指定的格式判断
+3. 如果格式不是 `opinion-video` / `video` → **拒绝**，提示：
+   > "cheat-shoot 仅用于视频格式。文章、小红书图文、播客等非视频内容不需要拍摄登记。
+   > 如果你要登记发布，请用 '已发布 [URL]'。
+   > 如果你要复盘数据，请发布后到窗口期再说 '复盘 [prediction]'。"
+4. 老用户 state 缺 `content_form` 时，按 legacy video 项目处理，不阻塞。
+
 ## Overview
 
 ```
