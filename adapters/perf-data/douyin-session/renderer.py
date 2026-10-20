@@ -14,9 +14,32 @@ def _fmt_time(ts: int) -> str:
 def _fmt_num(n: int | None) -> str:
     if n is None:
         return "-"
+    if isinstance(n, str):
+        try:
+            n = int(float(n))
+        except ValueError:
+            return n
     if n >= 10000:
         return f"{n/10000:.1f}w"
     return str(n)
+
+
+def _fmt_float(v, digits: int = 2) -> str:
+    if v is None:
+        return "-"
+    try:
+        return f"{float(v):.{digits}f}"
+    except (TypeError, ValueError):
+        return str(v)
+
+
+def _fmt_percent(v) -> str:
+    if v is None:
+        return "-"
+    try:
+        return f"{float(v) * 100:.2f}%"
+    except (TypeError, ValueError):
+        return str(v)
 
 
 def _fmt_duration(ms: int) -> str:
@@ -24,6 +47,37 @@ def _fmt_duration(ms: int) -> str:
         return "-"
     s = ms // 1000
     return f"{s//60}:{s%60:02d}" if s >= 60 else f"{s}s"
+
+
+def _first_metrics(detail_captured: list[dict] | None) -> dict:
+    if not detail_captured:
+        return {}
+    for item in detail_captured:
+        data = item.get("data")
+        if not isinstance(data, dict):
+            continue
+        items = data.get("items")
+        if isinstance(items, list) and items and isinstance(items[0], dict):
+            metrics = items[0].get("metrics")
+            if isinstance(metrics, dict):
+                return metrics
+        item_data = data.get("item")
+        if isinstance(item_data, dict) and isinstance(item_data.get("metrics"), dict):
+            return item_data["metrics"]
+    return {}
+
+
+def _detail_sample_items(detail_captured: list[dict]) -> list[dict]:
+    samples = detail_captured[:3]
+    sample_urls = {item.get("url") for item in samples}
+    for item in detail_captured[3:]:
+        url = item.get("url") or ""
+        if item.get("url") in sample_urls:
+            continue
+        if any(k in url for k in ("comment", "keyword", "hot_word", "hotword")):
+            samples.append(item)
+            break
+    return samples
 
 
 def render_report(
@@ -54,12 +108,40 @@ def render_report(
     lines.append(f"- 分享：{_fmt_num(video.get('share_count'))}")
     lines.append("")
 
-    if detail_captured:
+    metrics = _first_metrics(detail_captured)
+    if metrics:
         lines.append("### 详细指标（来自创作者中心）")
+        lines.append("")
+        detail_rows = [
+            ("播放", _fmt_num(metrics.get("view_count"))),
+            ("完播率", _fmt_percent(metrics.get("completion_rate"))),
+            ("5s 完播率", _fmt_percent(metrics.get("completion_rate_5s"))),
+            ("2s 划走率", _fmt_percent(metrics.get("bounce_rate_2s"))),
+            (
+                "平均观看时长",
+                f"{_fmt_float(metrics.get('avg_view_second'))}s"
+                if metrics.get("avg_view_second") is not None
+                else "-",
+            ),
+            ("文案展开率", _fmt_percent(metrics.get("description_spread_rate"))),
+            ("文案读完率", _fmt_percent(metrics.get("description_completion_rate"))),
+            ("平均浏览图片数", _fmt_float(metrics.get("image_avg_view_count"))),
+            ("粉丝播放占比", _fmt_percent(metrics.get("fan_view_proportion"))),
+            ("主页访问", _fmt_num(metrics.get("homepage_visit_count"))),
+            ("涨粉", _fmt_num(metrics.get("subscribe_count"))),
+            ("脱粉", _fmt_num(metrics.get("unsubscribe_count"))),
+        ]
+        for label, value in detail_rows:
+            if value != "-":
+                lines.append(f"- {label}：{value}")
+        lines.append("")
+
+    if detail_captured:
+        lines.append("### 详细接口原始样例")
         lines.append("")
         lines.append("```json")
         import json
-        for item in detail_captured[:3]:
+        for item in _detail_sample_items(detail_captured):
             full = json.dumps(item["data"], ensure_ascii=False, indent=2)
             truncated = full[:2000]
             if len(full) > 2000:

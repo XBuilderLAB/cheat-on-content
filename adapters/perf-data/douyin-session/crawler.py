@@ -15,6 +15,33 @@ from paths import auth_dir, debug_dir
 
 CREATOR_HOME = "https://creator.douyin.com/creator-micro/home"
 CREATOR_CONTENT = "https://creator.douyin.com/creator-micro/content/manage"
+CREATOR_WORK_DETAIL = "https://creator.douyin.com/creator-micro/work-management/work-detail"
+DETAIL_RESPONSE_KEYWORDS = (
+    "data_center",
+    "data_external",
+    "aweme_statistic",
+    "item_detail",
+    "statistics",
+    "work_detail",
+    "work_management",
+    "creator/item/mget",
+    "diagnose/item_compare",
+    "item_analysis",
+    "data/item/",
+    "comment",
+    "keyword",
+    "hot_word",
+    "hotword",
+    "flow",
+    "traffic",
+    "audience",
+    "overview",
+)
+DETAIL_RESPONSE_EXCLUDE_KEYWORDS = (
+    "prefetch",
+    "item/auth",
+    "author/upgrade",
+)
 
 
 class Session:
@@ -173,10 +200,7 @@ async def fetch_video_detail(sess: Session, aweme_id: str) -> dict:
 
     async def on_response(resp: Response) -> None:
         all_urls.append(resp.url)
-        if any(k in resp.url for k in (
-            "data_center", "data_external", "aweme_statistic",
-            "item_detail", "statistics", "/data/",
-        )):
+        if _looks_like_detail_response(resp.url, aweme_id):
             try:
                 data = await resp.json()
                 captured.append({"url": resp.url, "data": data})
@@ -185,9 +209,15 @@ async def fetch_video_detail(sess: Session, aweme_id: str) -> dict:
 
     page.on("response", on_response)
     try:
-        url = f"https://creator.douyin.com/creator-micro/data/following/media?item_id={aweme_id}"
+        url = f"{CREATOR_WORK_DETAIL}/{aweme_id}?enter_from=content"
         await page.goto(url, wait_until="domcontentloaded", timeout=60000)
-        await asyncio.sleep(6)
+        await asyncio.sleep(8)
+        for tab in ("总览", "流量分析", "观众分析", "评论热词"):
+            try:
+                await page.get_by_text(tab, exact=True).first.click(timeout=3000)
+                await asyncio.sleep(3)
+            except Exception:
+                pass
         if not captured:
             debug_path = debug_dir()
             debug_path.mkdir(parents=True, exist_ok=True)
@@ -196,6 +226,25 @@ async def fetch_video_detail(sess: Session, aweme_id: str) -> dict:
         return {"captured": captured}
     finally:
         await page.close()
+
+
+def _looks_like_detail_response(url: str, aweme_id: str) -> bool:
+    if "creator.douyin.com" not in url and "creator.amemv.com" not in url:
+        return False
+    if any(k in url for k in DETAIL_RESPONSE_EXCLUDE_KEYWORDS):
+        return False
+    if aweme_id in url and any(k in url for k in (
+        "creator/item/mget",
+        "item_analysis",
+        "data/item/",
+        "comment",
+        "keyword",
+        "hot_word",
+        "hotword",
+        "diagnose/item_compare",
+    )):
+        return True
+    return any(k in url for k in DETAIL_RESPONSE_KEYWORDS)
 
 
 async def fetch_comments_creator(sess: Session, aweme_id: str, max_pages: int = 60) -> list[dict]:
