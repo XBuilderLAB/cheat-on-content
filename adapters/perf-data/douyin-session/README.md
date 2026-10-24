@@ -121,3 +121,24 @@ adapters/perf-data/douyin-session/
 - `xhs-explore` — 小红书，已实现（同样走 Playwright 被动拦截路线，照搬自本 adapter）
 
 如果你做多平台内容，**只装你实际用的 adapter**——不需要全装。
+
+
+## 详情采集的校验与完整证据
+
+在新版作品详情入口及多页签采集的基础上，采集器会等待“流量分析”页签和
+“平均播放时长”。登录失效、误入其他页面或没有匹配响应时明确失败，不把缺失指标记为零。
+账号总览响应被排除，避免混入单条作品报告；接口 URL 的查询参数不落盘。
+
+`fetch_video_detail` 保留兼容的 `captured` 字段，新增 `aweme_id`、`page_url` 和
+`sections`（可见页面文本）。报告继续展示结构化指标，并将完整响应与页面文本保存到
+同目录 `detail.json`；包装脚本移动报告时也保留此文件。响应内容仍属于账号数据，
+不要提交到技能仓库。观众分析和评论热词页签可用时仍会采集。
+
+离线回归测试（使用已安装 Playwright 的 Python 环境）：
+
+```bash
+python -m unittest discover -s adapters/perf-data/douyin-session -p 'test_detail.py' -v
+```
+
+真实后台验证需要用户自己的有效登录态；不要将登录资料、真实作品 ID、评论或后台
+响应添加到测试夹具。本次补充不改变评论列表采集流程。

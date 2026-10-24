@@ -85,6 +85,7 @@ def render_report(
     script: str,
     comments: list[dict],
     detail_captured: list[dict] | None = None,
+    detail_sections: dict[str, str] | None = None,
 ) -> str:
     lines: list[str] = []
     desc = video.get("desc") or "(无标题)"
@@ -107,6 +108,13 @@ def render_report(
     lines.append(f"- 收藏：{_fmt_num(video.get('collect_count'))}")
     lines.append(f"- 分享：{_fmt_num(video.get('share_count'))}")
     lines.append("")
+
+    if detail_sections:
+        lines.append("### 单条作品详细指标（页面快照）")
+        lines.append("")
+        for name, text in detail_sections.items():
+            lines.extend([f"#### {name}", "", text.strip(), ""])
+        lines.extend(["完整接口响应与页面快照保存在同目录的 `detail.json`。", ""])
 
     metrics = _first_metrics(detail_captured)
     if metrics:
