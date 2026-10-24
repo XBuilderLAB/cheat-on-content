@@ -120,6 +120,9 @@ if [[ -n "$LATEST_REPORT" && "$( dirname "$LATEST_REPORT" )" != "$VIDEO_FOLDER" 
   if [[ -f "$AUTO_DIR/script.txt" ]]; then
     cp "$AUTO_DIR/script.txt" "$VIDEO_FOLDER/script.txt"
   fi
+  if [[ -f "$AUTO_DIR/detail.json" ]]; then
+    cp "$AUTO_DIR/detail.json" "$VIDEO_FOLDER/detail.json"
+  fi
   # Clean up the auto-generated directory to avoid duplicates
   rm -rf "$AUTO_DIR"
   echo "[douyin-session] moved auto-named output and cleaned up $AUTO_DIR"

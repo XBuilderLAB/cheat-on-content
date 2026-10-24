@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from urllib.parse import urlsplit
 from pathlib import Path
 from typing import Any
 
@@ -164,37 +165,83 @@ def _normalize_video(v: dict) -> dict:
     }
 
 
-async def fetch_video_detail(sess: Session, aweme_id: str) -> dict:
-    """视频数据分析页（完播、转粉等）。"""
-    captured: list[dict] = []
-    all_urls: list[str] = []
+def _work_detail_url(aweme_id: str) -> str:
+    if not aweme_id or not aweme_id.isascii() or not aweme_id.isdecimal():
+        raise ValueError("aweme_id must contain ASCII digits only")
+    return f"https://creator.douyin.com/creator-micro/work-management/work-detail/{aweme_id}"
 
+
+def _is_detail_response(url: str) -> bool:
+    parsed = urlsplit(url)
+    return parsed.hostname == "creator.douyin.com" and (
+        parsed.path == "/web/api/creator/data/item/summarize/"
+        or parsed.path.startswith("/janus/douyin/creator/data/item_analysis/")
+        or parsed.path in {
+            "/janus/douyin/creator/data/item/play/source",
+            "/janus/douyin/creator/data/item/chapter",
+            "/janus/douyin/creator/data/realtime/analysis/data_center",
+        }
+    )
+
+
+async def _open_work_detail(page: Page, aweme_id: str) -> None:
+    await page.goto(_work_detail_url(aweme_id), wait_until="domcontentloaded", timeout=60000)
+    # The former data/following/media route can render the following list with
+    # HTTP 200. Require the actual work-detail UI instead of treating any load
+    # (including a login page) as successful collection.
+    await page.get_by_text("流量分析", exact=True).wait_for(state="visible", timeout=20000)
+    tip = page.get_by_text("知道了", exact=True)
+    if await tip.count() == 1 and await tip.is_visible():
+        await tip.click()
+
+
+async def fetch_video_detail(sess: Session, aweme_id: str) -> dict:
+    """Collect overview and lazy-loaded traffic/retention data for one work.
+
+    Keep raw JSON and visible page text separately: not every UI metric has a
+    stable API field, and absent values must not be fabricated as zero.
+    """
+    url = _work_detail_url(aweme_id)
+    captured: list[dict] = []
+    sections: dict[str, str] = {}
+    pending: set[asyncio.Task] = set()
     page = await sess.ctx.new_page()
 
-    async def on_response(resp: Response) -> None:
-        all_urls.append(resp.url)
-        if any(k in resp.url for k in (
-            "data_center", "data_external", "aweme_statistic",
-            "item_detail", "statistics", "/data/",
-        )):
-            try:
-                data = await resp.json()
-                captured.append({"url": resp.url, "data": data})
-            except Exception:
-                pass
+    async def capture(resp: Response) -> None:
+        try:
+            data = await resp.json()
+        except Exception:
+            return
+        # Do not include query strings, signatures or unrelated account-wide
+        # dashboards in the report. Preserve the response data without truncation.
+        parsed = urlsplit(resp.url)
+        captured.append({"url": parsed._replace(query="", fragment="").geturl(), "data": data})
+
+    def on_response(resp: Response) -> None:
+        if _is_detail_response(resp.url):
+            task = asyncio.create_task(capture(resp))
+            pending.add(task)
+            task.add_done_callback(pending.discard)
 
     page.on("response", on_response)
     try:
-        url = f"https://creator.douyin.com/creator-micro/data/following/media?item_id={aweme_id}"
-        await page.goto(url, wait_until="domcontentloaded", timeout=60000)
-        await asyncio.sleep(6)
+        await _open_work_detail(page, aweme_id)
+        await asyncio.sleep(4)
+        sections["总览"] = await page.locator("body").inner_text()
+        await page.get_by_text("流量分析", exact=True).click()
+        await page.get_by_text("平均播放时长", exact=True).wait_for(state="visible", timeout=20000)
+        await asyncio.sleep(4)
+        sections["流量分析"] = await page.locator("body").inner_text()
+        page.remove_listener("response", on_response)
+        if pending:
+            await asyncio.gather(*list(pending))
         if not captured:
-            debug_path = debug_dir()
-            debug_path.mkdir(parents=True, exist_ok=True)
-            (debug_path / "detail_urls.txt").write_text("\n".join(all_urls), encoding="utf-8")
-            print("[诊断] 详细数据接口没拦到，已 dump URL 列表。")
-        return {"captured": captured}
+            raise RuntimeError("No work-detail responses captured; check login and current API routes")
+        return {"aweme_id": aweme_id, "page_url": url, "captured": captured, "sections": sections}
     finally:
+        page.remove_listener("response", on_response)
+        if pending:
+            await asyncio.gather(*list(pending))
         await page.close()
 
 
