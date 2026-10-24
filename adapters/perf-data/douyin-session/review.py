@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import sys
 from pathlib import Path
 
@@ -107,7 +108,12 @@ async def run_with_id(aweme_id: str, script_path: str | None) -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
     if script:
         (out_dir / "script.txt").write_text(script, encoding="utf-8")
-    md = renderer.render_report(video, script, comments, detail.get("captured"))
+    (out_dir / "detail.json").write_text(
+        json.dumps(detail, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    md = renderer.render_report(
+        video, script, comments, detail.get("captured"), detail.get("sections")
+    )
     report = out_dir / "report.md"
     report.write_text(md, encoding="utf-8")
     print(f"\n✓ {report}")
