@@ -126,7 +126,8 @@ adapters/perf-data/douyin-session/
 ## 详情采集的校验与完整证据
 
 在新版作品详情入口及多页签采集的基础上，采集器会等待“流量分析”页签和
-“平均播放时长”。登录失效、误入其他页面或没有匹配响应时明确失败，不把缺失指标记为零。
+有效的单条作品指标响应，不依赖视频专有的“平均播放时长”标签，因此兼容视频和图文。
+登录失效、误入其他页面或没有有效指标响应时明确失败，不把缺失指标记为零。
 账号总览响应被排除，避免混入单条作品报告；接口 URL 的查询参数不落盘。
 
 `fetch_video_detail` 保留兼容的 `captured` 字段，新增 `aweme_id`、`page_url` 和
@@ -137,8 +138,12 @@ adapters/perf-data/douyin-session/
 离线回归测试（使用已安装 Playwright 的 Python 环境）：
 
 ```bash
-python -m unittest discover -s adapters/perf-data/douyin-session -p 'test_detail.py' -v
+python -m unittest discover -s adapters/perf-data/douyin-session -p 'test_detail*.py' -v
 ```
 
 真实后台验证需要用户自己的有效登录态；不要将登录资料、真实作品 ID、评论或后台
 响应添加到测试夹具。本次补充不改变评论列表采集流程。
+
+浏览器回归测试还需要安装 Chromium（`python -m playwright install chromium`）。
+测试页面和接口响应完全在本地模拟，覆盖无视频时长标签的图文、视频，以及报告和
+`detail.json` 的数据保留，不访问真实后台。

@@ -218,6 +218,29 @@ async def _open_work_detail(page: Page, aweme_id: str) -> None:
         await tip.click()
 
 
+DETAIL_METRICS_TIMEOUT = 20
+
+
+def _has_detail_metrics(data: Any) -> bool:
+    """Recognize work metrics shared by video and image-post responses."""
+    if not isinstance(data, dict) or data.get("status_code", 0) != 0:
+        return False
+    for key in ("analysis_trend", "trend_map", "play_source"):
+        if isinstance(data.get(key), dict) and data[key]:
+            return True
+    for key in ("items", "item_list"):
+        items = data.get(key)
+        if isinstance(items, list) and any(
+            isinstance(item, dict)
+            and any(isinstance(item.get(field), dict) and item[field]
+                    for field in ("metrics", "summarize_data"))
+            for item in items
+        ):
+            return True
+    item = data.get("item")
+    return isinstance(item, dict) and isinstance(item.get("metrics"), dict) and bool(item["metrics"])
+
+
 async def fetch_video_detail(sess: Session, aweme_id: str) -> dict:
     """Collect overview and lazy-loaded traffic/retention data for one work.
 
@@ -228,6 +251,7 @@ async def fetch_video_detail(sess: Session, aweme_id: str) -> dict:
     captured: list[dict] = []
     sections: dict[str, str] = {}
     pending: set[asyncio.Task] = set()
+    metrics_ready = asyncio.Event()
     page = await sess.ctx.new_page()
 
     async def capture(resp: Response) -> None:
@@ -239,6 +263,8 @@ async def fetch_video_detail(sess: Session, aweme_id: str) -> dict:
         # dashboards in the report. Preserve the response data without truncation.
         parsed = urlsplit(resp.url)
         captured.append({"url": parsed._replace(query="", fragment="").geturl(), "data": data})
+        if _has_detail_metrics(data):
+            metrics_ready.set()
 
     def on_response(resp: Response) -> None:
         if _is_detail_response(resp.url):
@@ -252,7 +278,15 @@ async def fetch_video_detail(sess: Session, aweme_id: str) -> dict:
         await asyncio.sleep(4)
         sections["总览"] = await page.locator("body").inner_text()
         await page.get_by_text("流量分析", exact=True).click()
-        await page.get_by_text("平均播放时长", exact=True).wait_for(state="visible", timeout=20000)
+        # Image posts can have valid metrics without a video watch-time label.
+        # Wait for actual work data, including data captured during overview,
+        # rather than requiring text specific to one content format.
+        try:
+            await asyncio.wait_for(metrics_ready.wait(), timeout=DETAIL_METRICS_TIMEOUT)
+        except asyncio.TimeoutError as exc:
+            raise RuntimeError(
+                "No valid work-detail metrics captured; check login and current API routes"
+            ) from exc
         await asyncio.sleep(4)
         sections["流量分析"] = await page.locator("body").inner_text()
         # Keep #61's audience and comment-keyword collection. Missing optional

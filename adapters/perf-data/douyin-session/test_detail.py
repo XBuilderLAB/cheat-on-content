@@ -68,8 +68,9 @@ class CollectionTests(unittest.IsolatedAsyncioTestCase):
     async def test_no_responses_is_not_silent_success(self):
         page = self.make_page()
         session = SimpleNamespace(ctx=SimpleNamespace(new_page=AsyncMock(return_value=page)))
-        with patch.object(crawler.asyncio, "sleep", new=AsyncMock()):
-            with self.assertRaisesRegex(RuntimeError, "No work-detail responses"):
+        with patch.object(crawler.asyncio, "sleep", new=AsyncMock()), \
+             patch.object(crawler, "DETAIL_METRICS_TIMEOUT", .01):
+            with self.assertRaisesRegex(RuntimeError, "No valid work-detail metrics"):
                 await crawler.fetch_video_detail(session, "123")
         page.close.assert_awaited_once()
 
