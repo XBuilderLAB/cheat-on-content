@@ -58,14 +58,15 @@ Batch Mode — 用户显式要批量（`/cheat-seed --batch 5`）：
 - **MODE_B_MAX_REPROBE_TURNS = 2** — Mode B "为什么" 反问最多 2 轮；超过则转 Mode C
 - **MAX_DEEP_DIVE_TURNS = 4** — Mode A 收敛阶段最多 4 轮反问，避免 AI 过度盘问
 - **WITH_DRAFT = yes** — 默认确认角度后立刻写 draft；用户可说 "等下，我自己写" 跳过
-- **DRAFT_LENGTH** — 派生自 `state.typical_duration_seconds`：30s→100-200字 / 90s→250-500字 / 240s→600-1000字 / 450s→1100-2000字 / 900s→2200+字
+- **DRAFT_LENGTH** — 视频稿派生自 `state.typical_duration_seconds`：30s→100-200字 / 90s→250-500字 / 240s→600-1000字 / 450s→1100-2000字 / 900s→2200+字
+- **XHS_DRAFT_LENGTH = 600-900 字** — 当 `content_form=short-text` 且用户明确要小红书 / state 启用了 `xhs-explore` 时使用
 - **HUMANIZE_DRAFT = on**（默认）/ off —— 写完 draft 后用 `humanizer` skill 过一遍，去掉 AI 写作 tells（em-dash 滥用 / rule of three / inflated 词汇 / 空泛归因等）。off 时直接出原始 AI draft。**只 humanize 正文，不动 header 的"必须改写"警告**
 
 ## Inputs
 
 | 必填 | 来源 |
 |---|---|
-| `.cheat-state.json` | 读 calibration_samples / typical_duration / cadence |
+| `.cheat-state.json` | 读 calibration_samples / typical_duration / cadence / content_form / enabled_perf_adapters |
 | `rubric_notes.md` | 读当前 rubric（粗打分用） |
 | `script_patterns.md` | 读已有 pattern（写 draft 时按 cheat sheet 选结构） |
 | `predictions/*.md`（如有） | 已发历史，brainstorm 时作为 context |
@@ -279,7 +280,23 @@ Mode A 默认深挖用户经历。但如果**用户讲的本身是时事话题**
 
 **写 draft 前必读** `script_patterns.md` —— 按"结构选型 cheat sheet"对应用户的 topic 选合适结构。如果文件还在抽象骨架阶段（用户没填几个 pattern），就用 starter rubric 对应的通用框架。
 
-**字数**：按 `DRAFT_LENGTH` 派生（基于 `typical_duration_seconds`）。
+**字数与格式分流**：
+- `content_form=opinion-video` 或未明确非视频 → 按 `DRAFT_LENGTH` 派生（基于 `typical_duration_seconds`）。
+- `content_form=short-text` 且用户明确要小红书 / `enabled_perf_adapters` 含 `xhs-explore` → 走下面的小红书图文规则。
+
+#### 小红书图文规则
+
+当当前稿件是小红书图文时，不走下面的视频段落稿规则，改用小红书图文规则：
+
+1. 先读 `starter-rubrics/xhs-post.md` 的“小红书特有注意事项”。
+2. 写 3 个候选标题，每个 ≤20 个中文字符，并标注策略：数字 / 痛点 / 悬念 / 直接价值。
+3. 正文目标 600-900 字，前 2 行必须直接给痛点、反直觉、结果或具体场景。
+4. 结构必须从 5 类里选一种：清单体 / 教程体 / 故事体 / 对比体 / 测评体。
+5. 手机排版：每段 2-4 句，段间空行，用 emoji 做段落锚点；不要用 markdown H2/H3 标题层级。
+6. 结尾 1-2 句给明确动作：收藏理由 / 评论问题 / 下次想看的方向。
+7. 写入 `scripts/<YYYY-MM-DD>_<id>_<short-title>.md` 时使用 `templates/xhs-post.template.md` 的结构。
+
+完成后提示用户下一步是 `/cheat-predict scripts/<...>.md`，发布后直接走 `/cheat-publish`；小红书图文不需要 `/cheat-shoot`。
 
 #### ⚠️ 正文必须是段落版，不是字幕格式（**最常见的生成跑偏**）
 
