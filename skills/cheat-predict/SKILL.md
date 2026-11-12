@@ -1,7 +1,7 @@
 ---
 name: cheat-predict
 description: 给最终稿写一份 immutable 盲预测日志。这是 cheat-on-content 整个校准循环的核心动作——预测段一旦写完不可改，由 hook 强制。**自动检测**：如目标文件已有 `## 预测` / `## 预测 v1` 段（被 cheat-shoot 调用走 v2 模式），改成 append `## 预测 v2` 而非覆盖。**打分通过 Task tool 委派给 `cheat-score-blind` sub-agent**（context-isolated channel B），主 Claude review 后落盘。触发词："启动预测"/"start prediction"/"给这稿子打分并预测"/"写预测日志"。
-argument-hint: <script-path> [— mode: v1|v2] [— prediction-file: <path>] [— skip-blind]
+argument-hint: '<script-path> [— mode: v1|v2] [— prediction-file: <path>] [— skip-blind]'
 allowed-tools: Bash(*), Read, Write, Edit, Glob, Task
 ---
 
@@ -333,7 +333,7 @@ predictions/YYYY-MM-DD_<id>_<short-title>.md
 
 ```python
 # 伪代码
-edit_old = "## 复盘\n"   # 单独一行，确保 hook awk 识别为 v1 段的边界
+edit_old = "## 复盘\n"   # old_string 必须从这一行开始。带上锁定区里的内容会被 hook 拦住
 edit_new = """## 预测 v2 (replaces v1; basis=post_shoot_pre_publish)
 
 **Diff vs v1**: 改了 N 行（X→Y%），主要变化：[摘要]
@@ -395,7 +395,7 @@ cheat-retro 复盘时按"读最后一个 `## 预测 vN`"逻辑，自然取到 v2
 方向押注：比上一篇明显好（ER+HP 双 5）
 对比对象：N/A（这是第 1 篇）
 
-⚠️  ## 预测段已 immutable（hook 锁定）。
+⚠️  预测正文已 immutable（从输入快照到 ## 复盘 之前，hook 以 exit 2 锁定）。
 ⚠️  这是 cold-start 期简化版——没有 bucket 数字。前 5 篇都这样。
    第 5 篇复盘后会自动解锁完整预测（bucket / 概率 / 锚点 / 反事实）。
 
@@ -414,7 +414,7 @@ cheat-retro 复盘时按"读最后一个 `## 预测 vN`"逻辑，自然取到 v2
 bucket 押注：30-100w（中枢 50w）
 关键校准假设：本篇 vs 谁问你了 = 1.5-2x
 
-⚠️  ## 预测 段已 immutable（hook 锁定）。
+⚠️  预测正文已 immutable（从输入快照到 ## 复盘 之前，hook 以 exit 2 锁定）。
 ⚠️  你不能再向我"透露"这条作品的播放数据，否则下次复盘的盲度声明失效。
    如果你不小心看到了，告诉我——我会在文件里补一个 integrity warning。
 
@@ -429,7 +429,7 @@ bucket 押注：30-100w（中枢 50w）
 2. **整数维度分**。同 cheat-score
 3. **概率分布 = 100%**。不允许 95% + 8%；要么诚实给 50% + 30% + 15% + 5%，要么承认不知道
 4. **必须有 `## 复盘` 占位空段**——否则 hook 不知道哪里是 immutable 边界
-5. **不允许"先写文件再讨论分数"**——文件落盘后预测段就锁了；讨论必须发生在 Phase 2 之后、Phase 6 之前
+5. **不允许"先写文件再讨论分数"**——文件落盘后预测正文就锁了（输入快照到 `## 复盘` 之前）；讨论必须发生在 Phase 2 之后、Phase 6 之前
 6. **id 是稿子 hash，不是时间戳**——重写 _redo.md 时 id 不变，便于跨文件追溯
 
 ## Refusals
