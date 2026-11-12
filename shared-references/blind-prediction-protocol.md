@@ -10,7 +10,7 @@
 
 **盲预测**：在预测者（人或模型）看到任何关于该作品发布后真实表现数据**之前**完成的预测。
 
-预测一旦写入 `predictions/*.md` 的 `## 预测` 段，该段即为 **immutable**——只能在文件末尾追加 `## 复盘` 段，不能修改预测段任何字符。
+预测一旦写入 `predictions/*.md`，从第一个 `## ` 标题到 `## 复盘` 之前的正文即为 **immutable**。这包括输入快照（当时打的分数）、预测 v1/v2、推理因素、锚点对比、反事实场景和关键校准假设。第一个 `## ` 之前的 header 仍可改（发布登记写在那里）。只能往 `## 复盘` 段追加，不能改预测正文的任何字符。
 
 ---
 
@@ -49,11 +49,12 @@
 
 ## Immutable 的工程边界
 
-`## 预测` 段的不可修改是**用户体验承诺**，由 hook 层强制：
+预测正文的不可修改是**用户体验承诺**，由 hook 层强制：
 
-- `hooks/prediction-immutability.sh` 在 PreToolUse(Edit|Write) 上检查 `predictions/` 下文件
-- 命中 `## 预测` 与下一个二级标题之间任何 diff → exit 1 阻塞
-- `## 复盘` 段的追加 → 放行
+- `hooks/prediction-immutability.sh` 在 PreToolUse(Edit|Write|MultiEdit) 上检查 `predictions/` 下含 `## 预测` 的文件
+- **锁定区** = 第一个 `## ` 标题到 `## 复盘` 之前。改动与锁定区重叠 → **exit 2**。Claude Code 只在退出码 2 时拦截工具调用；退出码 1 是非阻塞错误，编辑仍会执行（[Hooks](https://code.claude.com/docs/en/hooks)）
+- 改 header（第一个 `## ` 之前）、用 old_string 从 `## 复盘` 这一行开始插入 `## 预测 v2`、在 `## 复盘` 里追加 → 放行
+- 对已存在的预测文件用 Write 整体覆盖 → exit 2
 
 **禁止的"绕开"模式**（子 skill 必须拒绝）：
 - "把预测段重写得更准一点" → 拒绝。如有正当理由重做，创建新文件 `<原文件名>_redo.md`，原文件保留

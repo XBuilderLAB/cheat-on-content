@@ -95,7 +95,7 @@
 
 ### 组件 3：预测主体（Prediction）⭐ immutable 段
 
-这是 immutable 段的核心。`hooks/prediction-immutability.sh` 拦截这段往后到下一个 `##` 的所有 Edit。
+这是预测正文的核心，但 hook 锁的不是这一节自己。`hooks/prediction-immutability.sh` 从第一个 `## `（组件 2 输入快照，含当时的分数）一直锁到 `## 复盘` 之前，所以推理因素、锚点对比、反事实场景、关键校准假设和预测 v2 同样不能事后改。只锁 `## 预测` 到下一个标题，等于把分数和理由留成可编辑的。
 
 ```markdown
 ## 预测 v1
@@ -265,27 +265,27 @@ file: predictions/YYYY-MM-DD_<id>_<short>.md
 # 标题 — 预测日志              ← 组件 1: header（含 confidence + script_hash + Prediction Basis + BlindScored By + BlindScore Disagreement）
 （metadata block）
 
-## 输入快照                     ← 组件 2
+## 输入快照                     ← 组件 2 ⭐ IMMUTABLE 起点（含当时的分数）
 （scores + 用户改写要点 vs Claude 草稿）
 
-## 预测 v1                      ← 组件 3 ⭐ IMMUTABLE 起点（基于 pre-shoot 草稿）
+## 预测 v1                      ← 组件 3（基于 pre-shoot 草稿，同样锁定）
 （bucket + 概率 + 中枢 + 一句话 reason）
 
-## 推理因素                     ← 组件 4
+## 推理因素                     ← 组件 4（锁定）
 （带方向 + 置信度的表）
 
-## 锚点对比                     ← 组件 5（校准池不够时仍写"N/A 段"）
+## 锚点对比                     ← 组件 5（锁定；校准池不够时仍写"N/A 段"）
 
-## 反事实场景                   ← 组件 6
+## 反事实场景                   ← 组件 6（锁定）
 （每 bucket 一段"意味着什么"）
 
-## 关键校准假设                 ← 组件 7
+## 关键校准假设                 ← 组件 7（锁定）
 （这次预测作为实验的明确赌注）
 
-## 预测 v2 (replaces v1)        ← (可选) 拍后改稿 ≥30% 时由 cheat-shoot 触发，append 不覆盖
-（同 7 组件结构 + 头部含 Diff vs v1 摘要）
+## 预测 v2 (replaces v1)        ← (可选) 拍后改稿 ≥30% 时由 cheat-shoot 触发，在 ## 复盘 前插入，不覆盖 v1
+（同 7 组件结构 + 头部含 Diff vs v1 摘要；插入后同样锁定）
 
-## 复盘                         ← 仅追加，IMMUTABLE 边界
+## 复盘                         ← 仅追加。锁定区到此行为止
 （实绩 + top 评论 + 验证/推翻 + 新观察）
 ```
 
