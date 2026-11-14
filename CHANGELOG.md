@@ -203,7 +203,7 @@ README 安装段从"### Claude Code"+"### Codex"双标题，改为"默认 + supp
 
 ### Added — 两个一等公民 trend source
 
-- **[aihot](adapters/trend-sources/aihot.md)**（Claude skill）：[aihot.virxact.com](https://aihot.virxact.com) 的中文 AI 行业每日精选，5 类（模型/产品/行业/论文/技巧）。无 auth，curl 公开 API，rate limit 600/min
+- **[aihot](adapters/trend-sources/aihot.md)**（Claude skill）：[AIHOT](https://aihot.news/) 的中文 AI 行业每日精选。当前安装方式见适配文档
 - **[trendradar-mcp](adapters/trend-sources/trendradar-mcp.md)**（MCP server）：[TrendRadar](https://github.com/sansan0/TrendRadar)（57k stars，GPL-3.0 通过 MCP 调用不构成 linking）。25+ MCP 工具——除 `get_latest_news` 外还有 `analyze_topic_trend`（爆火/衰退判定）、`compare_periods`（周环比）、`analyze_sentiment`
 
 ### Added — `shared-references/data-source-routing.md`
