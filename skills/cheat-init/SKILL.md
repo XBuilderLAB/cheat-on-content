@@ -435,9 +435,9 @@ import 完成后：
 ### Phase 4: 测试 hook 是否生效（仅当 Q5=是）
 
 跑一次假的 Edit 拦截测试：
-1. 创建临时文件 `predictions/_test_hook.md`，含 `## 预测\n[test]\n## 复盘\n`
-2. 尝试 Edit 这个文件的 `## 预测` 段
-3. 钩子应 exit 1 阻塞 → 报告"✅ immutability 钩子生效"
+1. 创建临时文件 `predictions/_test_hook.md`，含 header、`## 预测\n[test]\n## 推理因素\n[reason]\n## 复盘\n`
+2. 尝试 Edit `[test]`，再尝试 Edit `[reason]`
+3. 两次都应 **exit 2** 阻塞 → 报告"✅ immutability 钩子生效"。exit 1 不算生效：Claude Code 只在退出码 2 时真正拦截 Edit
 4. 删除测试文件
 5. SessionStart hook 验证：直接调一次 `bash .cheat-hooks/session-start.sh` → 应输出报告（即使是空的也行）
 

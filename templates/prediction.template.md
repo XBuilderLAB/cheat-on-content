@@ -32,6 +32,8 @@
 
 ## 输入快照
 
+> ⚠️ **从本节到 `## 复盘` 之前都是 immutable**——分数、预测、推理、锚点、反事实、校准假设写完都不能改。`hooks/prediction-immutability.sh` 会以 exit 2 拦截。重做请创建 `<本文件名>_redo.md`。
+
 **分数 (vN)**: `<dim1=X / dim2=X / ...>` → composite=**`<X.XX>`**
 
 > 示例：ER5 / HP5 / QL5 / NA3 / AB5 / SR2 / SAT4 → composite=**8.24**
@@ -48,8 +50,7 @@
 
 ## 预测 v1
 
-> ⚠️ **本段是 immutable**——`hooks/prediction-immutability.sh` 会拦截对本段的 Edit。
-> 写完不可改。如要重做请创建 `<本文件名>_redo.md`，原文件保留。
+> ⚠️ 本节在锁定区内。锁定从 `## 输入快照` 开始，到 `## 复盘` 为止。
 
 **Bucket**: `<X-Yw>`  ← e.g. `30-100w`
 
