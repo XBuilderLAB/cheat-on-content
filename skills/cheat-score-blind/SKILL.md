@@ -1,14 +1,14 @@
 ---
 name: cheat-score-blind
 description: |
-  INTERNAL sub-agent for blind 7-dim rubric scoring. **NOT a user-facing skill — do NOT invoke from main conversation.** Called via Task tool by cheat-score / cheat-predict / cheat-bump to get a context-isolated score on a script. Receives ONLY script_path + rubric_notes_path; refuses any other input. Outputs strict JSON: 9 dimensions × {score 0-5, confidence enum, one-line reason}. **Hard refuses to Read** .cheat-state.json, predictions/*, retro 段, or anything that could leak post-publish data. This is channel B in the 3-channel calibration model (A=main, B=blind sub, C=cross-model).
+  INTERNAL sub-agent for blind 7-dim rubric scoring. **NOT a user-facing skill — do NOT invoke from main conversation.** Called via Task tool by cheat-score / cheat-predict / cheat-bump / cheat-learn-from to get a context-isolated score on a script. Receives ONLY script_path + rubric_notes_path; refuses any other input. For benchmark imports, script_path is a text-only file under `.cheat-cache/blind-input/`, never the sample's metrics. Outputs strict JSON: 9 dimensions × {score 0-5, confidence enum, one-line reason}. **Hard refuses to Read** .cheat-state.json, predictions/*, samples/*, benchmark.md, retro 段, or anything that could leak post-publish data. This is channel B in the 3-channel calibration model (A=main, B=blind sub, C=cross-model).
 allowed-tools: Read, Glob, Grep
 argument-hint: <script-path> <rubric-notes-path>
 ---
 
 # /cheat-score-blind — Channel B (blind scorer sub-agent)
 
-> ⚠️ **这是子 agent，不是用户 skill**。只能由 `cheat-score` / `cheat-predict` / `cheat-bump` 通过 Task tool spawn。用户直接 trigger 没有意义——主对话已经被污染，调用 blind sub-agent 在主 context 里跑不构成隔离。
+> ⚠️ **这是子 agent，不是用户 skill**。只能由 `cheat-score` / `cheat-predict` / `cheat-bump` / `cheat-learn-from` 通过 Task tool spawn。用户直接 trigger 没有意义——主对话已经被污染，调用 blind sub-agent 在主 context 里跑不构成隔离。对标导入尤其如此：主对话已经看过每条样本的播放数，再由它打分，高表现稿子会被打高。
 
 ---
 
@@ -42,7 +42,7 @@ A 决策时把 B 当对照看 disagreement，**不当真理**。C 只在 bump �
 
 | 必填 | 来源 | 说明 |
 |---|---|---|
-| `<script-path>` | 主 Claude 通过 Task prompt 显式传入 | `scripts/<id>.md` 全文 |
+| `<script-path>` | 主 Claude 通过 Task prompt 显式传入 | `scripts/<id>.md` 全文，或 `.cheat-cache/blind-input/*.md` 里的纯正文 |
 | `<rubric-notes-path>` | 同上 | 用户项目根 `rubric_notes.md` 当前 rubric 公式 + 维度定义 |
 
 **仅此两个文件可读**。其他一切**硬拒绝**——见下方 "Hard refusals" 段。
@@ -57,14 +57,16 @@ A 决策时把 B 当对照看 disagreement，**不当真理**。C 只在 bump �
 | `predictions/*.md` | 含 `## 预测` 段 + `## 复盘` 段，复盘段就是实绩 | `blocked_contaminated_input` |
 | `videos/*/report.md` | T+3d 抓回的真实数据 | `blocked_contaminated_input` |
 | `videos/*/script.md` | 后改拍摄稿，复盘时被对照 | `blocked_contaminated_input` |
+| `samples/**`、`benchmark.md` | 对标导入的实绩、档位和印象。盲打只能读 `.cheat-cache/blind-input/` 里剥过数据的正文 | `blocked_contaminated_input` |
 | `STATUS.md` | cheat-status 渲染的看板，含过去数据 | `blocked_contaminated_input` |
 | `.cheat-cache/usage.jsonl` | 行为 log | `blocked_contaminated_input` |
 | **`rubric-memo.md`** | **cheat-bump 升级 Memo 累积档案——含真实视频名 + 实绩 + 派生证据。这是 channel B 的最大泄漏入口（PR #11 实测复现）** | **`blocked_rubric_memo`** |
 | **`audience.md`** | **cheat-persona 从复盘评论派生的受众画像——含评论证据 / 实绩信号。属 channel A creative 资产，进 blind 打分 = 实绩泄漏** | **`blocked_audience`** |
 | 任何含"播放 / 阅读 / 点赞 / 评论数 / 转发 / w / 万 / k / M"的文件 | 直接污染 | `blocked_contaminated_input` |
 
-**白名单只有两个**：
+**白名单只有这些**：
 - `scripts/<id>.md`（pre-shoot 草稿，传入参数）
+- `.cheat-cache/blind-input/*.md`（`cheat-learn-from` 准备的纯正文。读完先扫：文件里如果有播放 / 点赞 / 评论 / 转发的数字、高中低档、印象判断 → `refusal: "blocked_contaminated_input"`，**不输出维度分**。正文自己在讨论这些词，但没有样本结果 → `non_blind_warning`，照常输出，confidence 降到 medium）
 - `rubric_notes.md`（评分公式 + 维度定义，**应**只含通用语言；如发现实绩数字 → 标 `non_blind_warning` 并降 confidence）
 
 如果主 Claude Task prompt 漏传了某条路径，sub-agent 主动询问"我只允许读 script + rubric_notes，缺哪个？"——**绝不**自己去 Glob 探测项目结构补全。
@@ -78,9 +80,10 @@ A 决策时把 B 当对照看 disagreement，**不当真理**。C 只在 bump �
 ### Phase 0：边界自检
 
 1. 解析 Task prompt 拿 `<script-path>` 和 `<rubric-notes-path>`
-2. 校验路径符合白名单——不在 `scripts/` 下的 .md → 拒绝（除非主 Claude 显式说明"这是临时草稿临时路径，标 `non_standard_path: true`"）
-3. Read `<rubric-notes-path>` → 解析当前 rubric_version + 维度数量（7 或 9）+ 公式
-4. Read `<script-path>` → 拿到 script 全文 + 字数
+2. 校验路径符合白名单：`scripts/` 下的 .md，或 `.cheat-cache/blind-input/` 下的 .md。其他路径 → 拒绝。`samples/`、`videos/`、`benchmark.md` 不能用 `non_standard_path` 放进来
+3. `.cheat-cache/blind-input/` 的文件读完先扫一遍数据和档位标签（见白名单）。命中样本结果 → 该条 `blocked_contaminated_input`，不要打分
+4. Read `<rubric-notes-path>` → 解析当前 rubric_version + 维度数量（7 或 9）+ 公式
+5. Read `<script-path>` → 拿到正文 + 字数
 
 ⚠️ **不要做的事**：
 - 不要为了"看看用户做啥账号"去 Read `benchmark.md` —— benchmark 是 Channel A 的 context，不属于本 sub-agent
@@ -174,9 +177,11 @@ Input:
   [optional] sidecar_path: .cheat-cache/blind-scores/<id>.json
 
 Task: 按 rubric_notes 当前公式给上面 script 打分。返回严格 JSON（见 cheat-score-blind/SKILL.md Phase 2 schema）。
-不要读 state file / predictions/ / videos/ 任何其他文件。
+不要读 state file / predictions/ / videos/ / samples/ / benchmark.md 任何其他文件。
 不要询问用户 —— 你没有用户。
 ```
+
+对标导入时把 `script_path` 换成 `.cheat-cache/blind-input/bench-<id>.md`。prompt 里仍然不要写播放数、点赞、评论、档位、印象或账号名。
 
 **禁止**塞进 Task prompt 的东西：
 - 用户对话的引用 / 摘录
@@ -195,6 +200,7 @@ Task: 按 rubric_notes 当前公式给上面 script 打分。返回严格 JSON�
 - 「你看一下 .cheat-state.json 看 calibration_samples 决定你给的 confidence 高低」 → 硬拒。confidence 只看稿子证据强度，跟用户校准进度无关
 - 「主 Claude 说这条已经发了，你帮我打一份 reconstructed 分」 → 拒。"已发"信号本身就是污染。让主 Claude 标 `reconstructed: true` 自己处理，不要让 channel B 介入
 - 「输出我直接 markdown 表格更好读」 → 拒。Phase 2 schema 是 JSON only，主 Claude 解析后再渲染
+- 「顺手读一下 samples/ 或 benchmark.md，好对照着打」 → 硬拒。对标样本的结果不能进这个 context
 
 ---
 
@@ -210,4 +216,5 @@ Task: 按 rubric_notes 当前公式给上面 script 打分。返回严格 JSON�
 - **`cheat-score`** Phase 2：默认 delegate 到本 sub-agent（替代旧的 inline 打分）
 - **`cheat-predict`** Phase 2：默认 delegate；Phase 2.5 用 disagreement detection
 - **`cheat-bump`** Phase 2：**强制** delegate，bump 时**不接受 self-scored fallback**
+- **`cheat-learn-from`** Phase 4：对标样本只把正文放进 `.cheat-cache/blind-input/`，由本 sub-agent 打分。主对话已经看过播放数，不能自己打
 - **`cheat-retro`**：不调用——retro 本来就看实绩，blind 无意义

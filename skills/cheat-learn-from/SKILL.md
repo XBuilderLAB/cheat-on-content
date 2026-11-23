@@ -1,8 +1,8 @@
 ---
 name: cheat-learn-from
 description: 从对标账号导入 script + 数据 → 拆 pattern + 派生 base rubric 信号 → 写到 benchmark.md / script_patterns.md / rubric_notes.md。**这是工具最早期信号的来源**——cold-start 用户没自己历史时全靠对标，发过历史的用户也建议至少 1 个对标做 sanity check。触发词："学这个账号"/"拆这几个对标视频"/"learn from"/"导入对标账号"/"找对标"。
-argument-hint: <账号名> [— way: a (default) | b] [— append | --replace]
-allowed-tools: Bash(*), Read, Write, Edit, Glob, WebFetch, Skill
+argument-hint: '<账号名> [— way: a (default) | b] [— append | --replace]'
+allowed-tools: Bash(*), Read, Write, Edit, Glob, WebFetch, Skill, Task
 ---
 
 # /cheat-learn-from — 对标账号导入
@@ -26,7 +26,7 @@ allowed-tools: Bash(*), Read, Write, Edit, Glob, WebFetch, Skill
   ↓
 [Phase 3: 询问每条样本的"印象判断"（高/中/低 + 为啥）]
   ↓
-[Phase 4: Claude 拆 pattern + 派生 rubric 信号]
+[Phase 4: 纯正文交给 cheat-score-blind，再拆 pattern]
   ↓
 [Phase 5: 用户 review → 改 → 落盘]
   ↓
@@ -222,11 +222,26 @@ b) **adapter 自动抓（如已配置）**
 
 > 注意：印象**可以**和数据冲突——比如某条数据高但用户觉得"不算代表作"。这种冲突本身是有用信号，记录下来。
 
-### Phase 4: Claude 拆 pattern + 派生 rubric 信号
+### Phase 4: 盲打样本，再拆 pattern
 
-阅读所有 (script, 数据, 印象) → 自己分析：
+主对话到这一步已经看过每条样本的播放数和印象。**不能在这里自己打 7 维分**——知道结果再打分，高表现的稿子会被打高，派生出来的维度信号没有用。
+
+#### 4.0 盲打（先做，做完才许看数据对照）
+
+1. 每条样本只把 **transcript 正文**写到 `.cheat-cache/blind-input/bench-<账号名>-<id>.md`
+   - 不要写播放、点赞、评论、转发、档位、印象、账号名
+   - 不要把 `meta.md` 里的数字抄进这个文件，也不要写在 Task prompt 里
+2. 分批（每批 ≤ 10）用 Task tool 调 `cheat-score-blind`。`script_path` 指向这些文件，`rubric_notes_path` 指向用户的 `rubric_notes.md`。prompt 里只放路径，不放结果
+3. 拿回 JSON 之后，主对话才把维度分和数据档位 / 印象对齐
+4. 用完删掉 `.cheat-cache/blind-input/` 里这批文件
+
+`refusal` 为 `blocked_contaminated_input` → 正文文件里还混着数据。去掉之后重打一次，不要改用主对话的分数。`non_blind_warning` → 保留分数，但在 Phase 5 里标明，不要按已知档位把分数"修正"过去。
+
+Task tool 不可用 → 停。告诉用户这批对标信号做不了，不要退回"我已经看到数据了，直接打"。
 
 #### 4a. Script patterns
+
+写法拆解可以读全文和数据（这不是打分）：
 
 按 script_patterns.md 的 cheat sheet 框架拆：
 - 开头钩子：3 种类型分布（场景代入 / IS 戏仿 / 数据反转）
@@ -240,7 +255,7 @@ b) **adapter 自动抓（如已配置）**
 
 #### 4b. Rubric 信号（**仅定性，不给数值权重**）
 
-对每条样本打 7 维分（用通用维度），然后看：
+用 4.0 拿回来的维度分，不要重打。然后看：
 - 高表现样本（按用户印象）共有哪些维度高？
 - 低表现样本共有哪些维度低？
 - 哪些维度在高/低样本之间无差异（说明不是关键维度）？
@@ -354,12 +369,14 @@ samples/<账号名>/<video-id>/
 5. **不直接抓视频**——下载是用户的事，避免 TOS + 反爬
 6. **可重复跑**——`--append` 加新视频，`--replace` 换账号
 7. **MIN_SAMPLES = 3**：少于 3 拆不出 pattern，拒绝继续
+8. **维度分只能来自 cheat-score-blind**。主对话已经看过数据，自己打的分不落盘、不进 rubric 信号
 
 ## Refusals
 
 - 「跳过印象判断，直接拆」 → 拒绝。印象是关键 input
 - 「我只能给 1 条样本」 → 拒绝。最少 3 条
 - 「直接给我数值权重」 → 拒绝。Phase 4 只给定性信号
+- 「你已经看到数据了，直接打分，不用 sub-agent」 → 拒绝。维度分必须来自只看过正文的 cheat-score-blind
 - 「能不能不写 transcript 文件，只在内存里拆」 → 不行。transcript 持久化是后续 cheat-retro Phase 4b diff 的依据
 - 「帮我下载对标视频」 → 拒绝。引导用户用 yt-dlp / BBDown 等工具自己下
 
